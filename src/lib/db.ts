@@ -177,6 +177,12 @@ export async function cancelSeries(seriesId: string): Promise<void> {
 
 export const PHOTO_BUCKET = "client-photos";
 
+/** One visit's photos. */
+export async function getBookingPhotos(bookingId: string): Promise<ClientPhoto[]> {
+  return fetchAll<ClientPhoto>(() => supabase.from("client_photos").select("*")
+    .eq("booking_id", bookingId).order("created_at", { ascending: false }).order("id"));
+}
+
 export async function getClientPhotos(clientId: string): Promise<ClientPhoto[]> {
   return fetchAll<ClientPhoto>(() => supabase.from("client_photos").select("*")
     .eq("client_id", clientId).order("created_at", { ascending: false }).order("id"));
@@ -188,27 +194,71 @@ export async function getAllPhotos(): Promise<ClientPhoto[]> {
     .order("created_at", { ascending: false }).order("id"));
 }
 
+/** Where a photo's small copy lives, beside the full one. */
+export function thumbPathOf(path: string): string {
+  return path.replace(/\.jpg$/i, "") + ".t.jpg";
+}
+
+// Signed URLs are reused until close to expiry. A fresh URL is a new address
+// to the browser, so re-signing on every screen would re-download every photo
+// over her mobile data each time.
+const signed = new Map<string, { url: string; until: number }>();
+const SIGN_SECONDS = 3600;
+
+async function sign(paths: string[]): Promise<Record<string, string>> {
+  const now = Date.now(), out: Record<string, string> = {}, need: string[] = [];
+  for (const p of paths) {
+    const hit = signed.get(p);
+    if (hit && hit.until > now + 5 * 60_000) out[p] = hit.url;
+    else need.push(p);
+  }
+  if (need.length) {
+    const { data, error } = await supabase.storage.from(PHOTO_BUCKET).createSignedUrls(need, SIGN_SECONDS);
+    if (!error) for (const r of data ?? []) {
+      if (r.path && r.signedUrl && !r.error) {
+        out[r.path] = r.signedUrl;
+        signed.set(r.path, { url: r.signedUrl, until: now + SIGN_SECONDS * 1000 });
+      }
+    }
+  }
+  return out;
+}
+
 /**
  * Short-lived signed URLs: these are photographs of identifiable people, so the
- * bucket is private and a copied link dies within the hour.
+ * bucket is private and a copied link dies within the hour. Full size, for
+ * viewing one photo or sharing it.
  */
 export async function photoUrls(paths: string[]): Promise<Record<string, string>> {
   if (!paths.length) return {};
-  const { data, error } = await supabase.storage.from(PHOTO_BUCKET).createSignedUrls(paths, 3600);
-  if (error) return {};
-  const out: Record<string, string> = {};
-  for (const r of data ?? []) if (r.path && r.signedUrl) out[r.path] = r.signedUrl;
-  return out;
+  return sign([...new Set(paths)]);
+}
+
+/**
+ * Grid-sized copies, keyed by the full photo's path: about a tenth of the
+ * download. Photos saved before thumbnails existed fall back to full size.
+ */
+export async function thumbUrls(paths: string[]): Promise<Record<string, string>> {
+  if (!paths.length) return {};
+  const uniq = [...new Set(paths)];
+  const small = await sign(uniq.map(thumbPathOf));
+  const out: Record<string, string> = {}, missing: string[] = [];
+  for (const p of uniq) { const u = small[thumbPathOf(p)]; if (u) out[p] = u; else missing.push(p); }
+  return missing.length ? { ...out, ...(await sign(missing)) } : out;
 }
 
 /**
  * Object first, then the row: a half-failure leaves an unreferenced file, never
  * a row pointing at a photo that doesn't exist (a broken thumbnail she can't clear).
  */
-export async function addClientPhoto(clientId: string, image: Blob, caption: string | null, bookingId: string | null): Promise<void> {
+export async function addClientPhoto(
+  clientId: string, image: Blob, caption: string | null, bookingId: string | null, thumb?: Blob | null,
+): Promise<void> {
   const path = `${clientId}/${crypto.randomUUID()}.jpg`;
   const up = await supabase.storage.from(PHOTO_BUCKET).upload(path, image, { contentType: "image/jpeg", upsert: false });
   if (up.error) fail(up.error);
+  // The small copy is a nicety: if it fails, grids fall back to the full photo.
+  if (thumb) await supabase.storage.from(PHOTO_BUCKET).upload(thumbPathOf(path), thumb, { contentType: "image/jpeg", upsert: false });
   const { error } = await supabase.from("client_photos").insert({
     client_id: clientId, booking_id: bookingId, storage_path: path, caption: caption || null,
   });
@@ -217,7 +267,7 @@ export async function addClientPhoto(clientId: string, image: Blob, caption: str
 
 /** Object first, then the row, so a half-failure leaves a visible row she can retry. */
 export async function deleteClientPhoto(photo: ClientPhoto): Promise<void> {
-  await supabase.storage.from(PHOTO_BUCKET).remove([photo.storage_path]);
+  await supabase.storage.from(PHOTO_BUCKET).remove([photo.storage_path, thumbPathOf(photo.storage_path)]);
   const { error } = await supabase.from("client_photos").delete().eq("id", photo.id);
   if (error) fail(error);
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { loadAll, type SalonData } from "@/lib/db";
 import { todaySa } from "@/lib/salon";
 import type { Client } from "@/lib/types";
@@ -13,14 +13,17 @@ interface Ctx extends SalonData {
 }
 
 const DataCtx = createContext<Ctx | null>(null);
+const REFRESH_AFTER_MS = 60_000;
 
 /** Loads the salon's data once after sign-in; every page reads from here. */
 export function DataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<SalonData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const loadedAt = useRef(0);
   const reload = useCallback(async () => {
     try {
+      loadedAt.current = Date.now();
       setData(await loadAll());
       setError(null);
     } catch (e) {
@@ -31,8 +34,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     reload();
     // Coming back to the tab (phone out of the apron) refreshes, so a booking
-    // made on the tablet shows up on the phone without a manual reload.
-    const onVisible = () => { if (document.visibilityState === "visible") reload(); };
+    // made on the tablet shows up on the phone without a manual reload. Not
+    // more than once a minute: she flicks between WhatsApp and the app all
+    // day, and each refresh re-reads the whole book over mobile data.
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && Date.now() - loadedAt.current > REFRESH_AFTER_MS) reload();
+    };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [reload]);

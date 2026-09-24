@@ -116,7 +116,8 @@ with sync_playwright() as p:
         # The booking flow, tap by tap: the sheet is fixed, so these are viewport shots.
         page = ctx.new_page(); errs = []
         page.on("pageerror", lambda e: errs.append("pageerror: " + str(e)))
-        page.goto(f"http://127.0.0.1:{srv.server_address[1]}/bookings/?new=1"); page.wait_for_timeout(1800)
+        # Tomorrow, so the free times do not depend on what time the run happens.
+        page.goto(f"http://127.0.0.1:{srv.server_address[1]}/bookings/?new=1&date={d(1)}"); page.wait_for_timeout(1800)
         page.screenshot(path=os.path.join(SHOTS, f"{label}_sheet_1_open.png"))
         page.fill("input[aria-label='Search clients']", clients[0]["name"][:4])
         page.locator(".cp-list button.item").first.click()
@@ -167,7 +168,7 @@ with sync_playwright() as p:
                 lctx = b.new_context(viewport=vp)
                 lctx.add_init_script(f"localStorage.setItem('sb-example-auth-token', {json.dumps(json.dumps(SESSION))}); localStorage.setItem('nicky-look', '{look}'); localStorage.setItem('nicky-curtain', new Intl.DateTimeFormat('en-CA', {{timeZone: 'Africa/Johannesburg'}}).format(new Date()))")
                 lctx.route("https://example.supabase.co/**", handle)
-                for r, tag in [("/", "today"), ("/bookings/?new=1", "sheet")]:
+                for r, tag in [("/", "today"), (f"/bookings/?new=1&date={d(1)}", "sheet")]:
                     page = lctx.new_page(); errs = []
                     page.on("pageerror", lambda e: errs.append("pageerror: " + str(e)))
                     page.goto(f"http://127.0.0.1:{srv.server_address[1]}" + r); page.wait_for_timeout(1800)

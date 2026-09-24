@@ -5,7 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronRight, ImagePlus, Share2, Sparkles } from "lucide-react";
 import { useSalon } from "@/components/data";
 import { Empty, Sheet, useToast } from "@/components/ui";
-import { getAllPhotos, photoUrls } from "@/lib/db";
+import { getAllPhotos, photoUrls, thumbUrls } from "@/lib/db";
+import { FullPhoto } from "@/components/clients-photos";
 import { bookingTitle, firstName, fmtDayMonth } from "@/lib/salon";
 import type { ClientPhoto } from "@/lib/types";
 
@@ -52,12 +53,12 @@ export default function Lookbook() {
   useEffect(() => {
     const need = visible.map((p) => p.storage_path).filter((path) => !urls[path]);
     if (!need.length) return;
-    photoUrls(need).then((u) => setUrls((prev) => ({ ...prev, ...u })));
+    thumbUrls(need).then((u) => setUrls((prev) => ({ ...prev, ...u })));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible.map((p) => p.id).join(",")]);
 
   async function share(p: ClientPhoto) {
-    const url = urls[p.storage_path];
+    const url = (await photoUrls([p.storage_path]))[p.storage_path];
     if (!url) return;
     try {
       const blob = await (await fetch(url)).blob();
@@ -126,8 +127,7 @@ export default function Lookbook() {
 
       {viewing && (
         <Sheet title={client ? firstName(client.name) : "Photo"} onClose={() => setViewing(null)}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          {urls[viewing.storage_path] && <img src={urls[viewing.storage_path]} alt="" className="lb-full" />}
+          <FullPhoto path={viewing.storage_path} thumb={urls[viewing.storage_path]} className="lb-full" />
           <div className="lb-meta">
             <div className="grow">
               <div style={{ fontWeight: 650 }}>{serviceOf(viewing) ?? "Nail set"}</div>

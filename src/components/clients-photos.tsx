@@ -22,7 +22,7 @@ import { Camera, Image as ImageIcon, MoreHorizontal } from "lucide-react";
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Sheet } from "@/components/ui";
-import { addClientPhoto, deleteClientPhoto, getClientPhotos, photoUrls } from "@/lib/db";
+import { addClientPhoto, deleteClientPhoto, getBookingPhotos, getClientPhotos, photoUrls, thumbUrls } from "@/lib/db";
 import { bookingTitle, fmtDayMonShort, fmtDayMonth } from "@/lib/salon";
 import type { BookingWithServices, ClientPhoto } from "@/lib/types";
 
@@ -33,6 +33,8 @@ export const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 // where nail detail still reads and the file stops shrinking usefully.
 export const MAX_EDGE_PX = 1400;
 export const JPEG_QUALITY = 0.82;
+// The grid copy: sharp in a three-across grid on a 3x phone screen, ~30 KB.
+export const THUMB_EDGE_PX = 480;
 export const MAX_CAPTION = 120;
 const SHOWN = 9;
 
@@ -79,7 +81,7 @@ async function decode(file: Blob): Promise<{ source: CanvasImageSource; width: n
  * human note ("4.1 MB → 198 KB · resized to 1400×1050") shown once after upload.
  * Throws PhotoError with a message meant for her.
  */
-export async function prepareImage(file: Blob): Promise<{ blob: Blob; note: string }> {
+export async function prepareImage(file: Blob): Promise<{ blob: Blob; thumb: Blob | null; note: string }> {
   if (!file || !file.size) throw new PhotoError("That file was empty. Try taking the photo again.");
   if (file.size > MAX_UPLOAD_BYTES) {
     throw new PhotoError(`That file is ${humanSize(file.size)} — too big to upload. A photo from your camera should be well under ${humanSize(MAX_UPLOAD_BYTES)}.`);
@@ -103,9 +105,21 @@ export async function prepareImage(file: Blob): Promise<{ blob: Blob; note: stri
     // A canvas re-encode carries none of the original's metadata: no GPS, no device, no timestamp.
     const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", JPEG_QUALITY));
     if (!blob) throw new PhotoError("This device couldn't process the photo. Try again.");
+    // A small copy for grids, drawn from the already-straightened canvas.
+    const ts = Math.min(1, THUMB_EDGE_PX / Math.max(w, h));
+    const small = document.createElement("canvas");
+    small.width = Math.max(1, Math.round(w * ts));
+    small.height = Math.max(1, Math.round(h * ts));
+    const sctx = small.getContext("2d");
+    let thumb: Blob | null = null;
+    if (sctx) {
+      sctx.imageSmoothingQuality = "high";
+      sctx.drawImage(canvas, 0, 0, small.width, small.height);
+      thumb = await new Promise<Blob | null>((res) => small.toBlob(res, "image/jpeg", 0.8));
+    }
     let note = `${humanSize(file.size)} → ${humanSize(blob.size)}`;
     if (w !== img.width || h !== img.height) note += ` · resized to ${w}×${h}`;
-    return { blob, note };
+    return { blob, thumb, note };
   } finally {
     img.done();
   }
@@ -144,7 +158,7 @@ export function ClientPhotos({ clientId, bookings, today, say }: {
     try {
       const list = await getClientPhotos(clientId);
       setPhotos(list);
-      setUrls(await photoUrls(list.slice(0, SHOWN).map((p) => p.storage_path)));
+      setUrls(await thumbUrls(list.slice(0, SHOWN).map((p) => p.storage_path)));
       setState("ready");
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -259,8 +273,7 @@ export function ClientPhotos({ clientId, bookings, today, say }: {
 
       {viewing && urls[viewing.storage_path] && (
         <Sheet title="Photo" onClose={() => setViewing(null)}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={urls[viewing.storage_path]} alt="" style={{ width: "100%", borderRadius: 12, display: "block" }} />
+          <FullPhoto path={viewing.storage_path} thumb={urls[viewing.storage_path]} />
           <p className="small muted">
             {captionLine(viewing, viewing.booking_id && byId.get(viewing.booking_id) ? bookingTitle(byId.get(viewing.booking_id)!) : null, viewing.booking_id ? byId.get(viewing.booking_id)?.date : undefined)}
           </p>
@@ -281,7 +294,7 @@ export function AddPhotoSheet({ clientId, bookingId, bookings, today, onClose, o
 }) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const pickRef = useRef<HTMLInputElement>(null);
-  const [prepared, setPrepared] = useState<{ blob: Blob; note: string } | null>(null);
+  const [prepared, setPrepared] = useState<{ blob: Blob; thumb: Blob | null; note: string } | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [caption, setCaption] = useState("");
   const [err, setErr] = useState("");
@@ -320,7 +333,7 @@ export function AddPhotoSheet({ clientId, bookingId, bookings, today, onClose, o
       if (!l || b.date + b.time > l.date + l.time) last = b;
     }
     try {
-      await addClientPhoto(clientId, prepared.blob, cleanCaption(caption) || null, last?.id ?? null);
+      await addClientPhoto(clientId, prepared.blob, cleanCaption(caption) || null, last?.id ?? null, prepared.thumb);
       await onSaved(prepared.note);
     } catch (x) {
       setErr(`Couldn't save that photo — ${x instanceof Error ? x.message : x}`);
@@ -378,9 +391,9 @@ export function BookingPhotos({ clientId, bookingId, bookings, today, say }: {
 
   const load = useCallback(async () => {
     try {
-      const list = (await getClientPhotos(clientId)).filter((p) => p.booking_id === bookingId);
+      const list = await getBookingPhotos(bookingId);
       setPhotos(list);
-      setUrls(await photoUrls(list.map((p) => p.storage_path)));
+      setUrls(await thumbUrls(list.map((p) => p.storage_path)));
     } catch {
       setPhotos(null); // not set up, or offline: the booking still works
     }
@@ -410,8 +423,7 @@ export function BookingPhotos({ clientId, bookingId, bookings, today, say }: {
       )}
       {viewing && urls[viewing.storage_path] && (
         <Sheet title="Photo" onClose={() => setViewing(null)}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={urls[viewing.storage_path]} alt="" style={{ width: "100%", borderRadius: 12, display: "block" }} />
+          <FullPhoto path={viewing.storage_path} thumb={urls[viewing.storage_path]} />
           {viewing.caption && <p className="small muted">{viewing.caption}</p>}
         </Sheet>
       )}
@@ -427,3 +439,17 @@ button.bp-th img { width: 100%; height: 100%; object-fit: cover; display: block;
 button.bp-add { flex: none; width: 84px; height: 84px; padding: 6px; border-radius: 16px; border: 1.5px dashed var(--gold); background: var(--gold-soft);
   color: var(--gold-ink); flex-direction: column; gap: 4px; font-size: 13px; font-weight: 700; line-height: 1.15; text-align: center; }
 `;
+
+/** One photo at full size: the grid copy shows at once, the sharp one swaps in. */
+export function FullPhoto({ path, thumb, className, style }: { path: string; thumb?: string; className?: string; style?: React.CSSProperties }) {
+  const [full, setFull] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    photoUrls([path]).then((u) => { if (live && u[path]) setFull(u[path]); });
+    return () => { live = false; };
+  }, [path]);
+  const src = full ?? thumb;
+  if (!src) return null;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt="" className={className} style={className ? style : { width: "100%", borderRadius: 12, display: "block", ...style }} />;
+}
