@@ -1,5 +1,8 @@
 "use client";
 
+import { ChevronDown, X } from "lucide-react";
+
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 import { useState } from "react";
 import { Sheet } from "@/components/ui";
 import { addClient, updateClient } from "@/lib/db";
@@ -83,17 +86,27 @@ export function ClientForm({ editing, today, onClose, onSaved }: {
             <input value={shade} onChange={(e) => setShade(e.target.value)} placeholder="e.g. Nude pink" />
           </label>
         </div>
-        <label className="field">Birthday (the year isn&apos;t kept)
+        {/* Day and month only: the year isn't kept, so asking for one (and
+            scrolling a date picker back decades to find it) was wasted effort. */}
+        <div className="field" role="group" aria-label="Birthday">Birthday
           <div className="row" style={{ flexWrap: "nowrap" }}>
-            <input className="grow" type="date" value={birthday} min="1920-01-01" max={today}
-              onChange={(e) => setBirthday(e.target.value)} />
-            {birthday && <button type="button" className="ghost" onClick={() => setBirthday("")} aria-label="Clear birthday">✕</button>}
+            <select className="grow" aria-label="Birthday day" value={birthday ? String(Number(birthday.slice(8, 10))) : ""}
+              onChange={(e) => setBirthday(e.target.value ? `2000-${birthday ? birthday.slice(5, 7) : "01"}-${e.target.value.padStart(2, "0")}` : "")}>
+              <option value="">Day</option>
+              {Array.from({ length: 31 }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}
+            </select>
+            <select style={{ flex: "2 1 0", minWidth: 0 }} aria-label="Birthday month" value={birthday ? birthday.slice(5, 7) : ""}
+              onChange={(e) => setBirthday(e.target.value ? `2000-${e.target.value}-${birthday ? birthday.slice(8, 10) : "01"}` : "")}>
+              <option value="">Month</option>
+              {MONTHS.map((m, i) => <option key={m} value={String(i + 1).padStart(2, "0")}>{m}</option>)}
+            </select>
+            {birthday && <button type="button" className="ghost icon" onClick={() => setBirthday("")} aria-label="Clear birthday"><X size={18} /></button>}
           </div>
-        </label>
+        </div>
 
         <div className="card tight" style={{ marginBottom: 0 }}>
           <button type="button" className="linkish" onClick={() => setPriorOpen(!priorOpen)}>
-            {priorOpen ? "▾" : "▸"} Been here before this app?{existingPrior.length ? ` · ${existingPrior.length} recorded` : ""}
+            <ChevronDown size={18} style={{ transform: priorOpen ? "none" : "rotate(-90deg)", transition: "transform .2s" }} /> Been here before this app?{existingPrior.length ? ` · ${existingPrior.length} recorded` : ""}
           </button>
           {priorOpen && (
             <div className="stack" style={{ marginTop: 10 }}>

@@ -1,10 +1,12 @@
 "use client";
 
+import { AlertTriangle, ChevronRight, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useSalon } from "@/components/data";
 import { rand, Seg, Sheet } from "@/components/ui";
+import { DayStrip, DurationStepper, TimeSlots, WHEN_CSS } from "@/components/when-picker";
 import {
-  ClientPicker, defaultServiceIds, lineFromOpt, phoneProblem, resolveClient, serviceOptions, ServicePicker,
+  ClientPicker, phoneProblem, resolveClient, serviceOptions, ServicePicker,
   type ClientChoice, type Line,
 } from "@/components/bookings-shared";
 import { addClient, cancelSeries, createSeries, type PickedService } from "@/lib/db";
@@ -19,9 +21,8 @@ export function RecurringSheet({ onClose, onDone }: { onClose: () => void; onDon
   const opts = useMemo(() => serviceOptions(services), [services]);
   const [choice, setChoice] = useState<ClientChoice>({ kind: "none" });
   const [start, setStart] = useState(today);
-  const [time, setTime] = useState("09:00");
-  const [lines, setLines] = useState<Line[]>(() =>
-    defaultServiceIds(opts).map((id) => opts.find((o) => o.id === id)!).map(lineFromOpt));
+  const [time, setTime] = useState<string | null>(null);
+  const [lines, setLines] = useState<Line[]>([]);
   const [durTouched, setDurTouched] = useState(false);
   const [durText, setDurText] = useState("");
   const [freq, setFreq] = useState<"7" | "14" | "28">("7");
@@ -40,8 +41,8 @@ export function RecurringSheet({ onClose, onDone }: { onClose: () => void; onDon
   const until = endDate ?? (start ? addDays(start, 90) : today);
   const nVisits = Math.min(24, Math.max(1, parseInt(count, 10) || 1));
   const dates = start ? computeRecurringDates(start, freqDays, endType, nVisits, until) : [];
-  const timeOk = /^\d{2}:\d{2}$/.test(time);
-  const clashes = timeOk ? dates.filter((d) => findCollision(bookings, d, time, duration || 30)) : [];
+  const timeOk = time != null && /^\d{2}:\d{2}$/.test(time);
+  const clashes = timeOk ? dates.filter((d) => findCollision(bookings, d, time!, duration || 30)) : [];
 
   async function create() {
     setError(null);
@@ -58,7 +59,7 @@ export function RecurringSheet({ onClose, onDone }: { onClose: () => void; onDon
       if (!client) throw new Error("No client chosen.");
       const payload: PickedService[] = lines.map((l) => ({ service_id: l.service_id, service_name: l.name, price: l.price }));
       const created = await createSeries({
-        client_id: client.id, start_date: start, time, duration_minutes: duration, freq_days: freqDays, end_type: endType,
+        client_id: client.id, start_date: start, time: time!, duration_minutes: duration, freq_days: freqDays, end_type: endType,
         end_count: endType === "count" ? nVisits : null, end_date: endType === "until" ? until : null,
         status, notes: notes.trim() || null,
       }, payload);
@@ -74,22 +75,26 @@ export function RecurringSheet({ onClose, onDone }: { onClose: () => void; onDon
   }
 
   return (
-    <Sheet title="New recurring booking" onClose={onClose}>
-      <div className="stack">
-        <ClientPicker clients={clients} byId={clientById} value={choice} onChange={setChoice} />
-        <div className="fields2">
-          <label className="field">First visit
-            <input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
-          </label>
-          <label className="field">Time
-            <input type="time" step={300} value={time} onChange={(e) => setTime(e.target.value)} />
-          </label>
+    <Sheet title="Recurring booking" onClose={onClose}>
+      <style>{WHEN_CSS}</style>
+      <div className="stack bs">
+        <div className="section">
+          <div className="section-label">Client</div>
+          <ClientPicker clients={clients} byId={clientById} value={choice} onChange={setChoice} />
         </div>
-        <ServicePicker opts={opts} lines={lines} onChange={setLines} />
-        <label className="field">Duration (minutes)
-          <input type="number" inputMode="numeric" min={5} step={5} value={durTouched ? durText : String(suggested)}
-            onChange={(e) => { setDurTouched(true); setDurText(e.target.value); }} />
-        </label>
+        <div className="section">
+          <div className="section-label">Services</div>
+          <ServicePicker opts={opts} lines={lines} onChange={setLines} />
+        </div>
+        <div className="section">
+          <div className="section-label">First visit</div>
+          <DayStrip value={start} onChange={setStart} today={today} bookings={bookings} />
+          <div className="bs-dur">
+            <DurationStepper value={duration} onChange={(n) => { setDurTouched(true); setDurText(String(n)); }}
+              auto={!durTouched || duration === suggested} onAuto={() => setDurTouched(false)} autoValue={suggested} />
+          </div>
+          <TimeSlots date={start} time={time} onChange={setTime} duration={duration || 30} bookings={bookings} today={today} />
+        </div>
         <div className="stack" style={{ gap: 6 }}>
           <span className="bk-label">How often</span>
           <div className="bk-segfull"><Seg value={freq} options={FREQS} onChange={setFreq} /></div>
@@ -112,7 +117,7 @@ export function RecurringSheet({ onClose, onDone }: { onClose: () => void; onDon
         </div>
         {clashes.length > 0 && (
           <div className="bk-clash" role="alert">
-            <strong>⚠️ {clashes.length} of these overlap another booking</strong>
+            <strong><AlertTriangle size={18} /> {clashes.length} of these overlap another booking</strong>
             {clashes.map(fmtDayMonth).join(", ")} at {time}. They&apos;ll still be booked; move those visits afterwards if needed.
           </div>
         )}
@@ -123,12 +128,17 @@ export function RecurringSheet({ onClose, onDone }: { onClose: () => void; onDon
         <label className="field">Comments
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Applies to every visit in the series." />
         </label>
-        <div className="bk-total"><span className="small muted">Per visit</span> <span className="big">{rand(perVisit)}</span></div>
         <div className="bk-foot">
           {error && <div className="notice danger" role="alert" style={{ margin: 0 }}>{error}</div>}
+          <div className="bs-sum">
+            <div className="grow">
+              <div className="bs-when">{dates.length} visit{dates.length !== 1 ? "s" : ""}, {freqLabel(freqDays).toLowerCase()}{time ? ` at ${time}` : ""}</div>
+              <div className="small muted">per visit</div>
+            </div>
+            <div className="bs-total">{rand(perVisit)}</div>
+          </div>
           <div className="bk-actions">
-            <button type="button" className="ghost" disabled={busy} onClick={onClose}>Cancel</button>
-            <button type="button" disabled={busy} onClick={create}>{busy ? "Creating…" : "Create series"}</button>
+            <button type="button" className="bs-go" disabled={busy} onClick={create}>{busy ? "Creating…" : "Create series"}</button>
           </div>
         </div>
       </div>
@@ -163,7 +173,7 @@ export function SeriesList({ onEdit, onNew, onDone }: {
     <>
       <div className="row" style={{ marginBottom: 12 }}>
         <h2 className="grow" style={{ margin: 0 }}>Recurring bookings</h2>
-        <button onClick={onNew}>＋ New recurring</button>
+        <button onClick={onNew}><Plus size={17} />New recurring</button>
       </div>
       {!rows.length && <div className="card"><p className="muted" style={{ margin: 0 }}>No recurring bookings yet. Start one above for a client who comes like clockwork.</p></div>}
       {rows.map((s) => {
@@ -190,7 +200,7 @@ export function SeriesList({ onEdit, onNew, onDone }: {
                       <span className="time">{b.time.slice(0, 5)}</span>
                       <div className="grow"><div className="title">{fmtDayMonth(b.date)}</div>
                         <div className="meta">{b.status === "cancelled" ? "Cancelled" : b.status === "pending" ? "Pending" : b.status === "no-show" ? "No-show" : "Confirmed"}</div></div>
-                      <span className="small muted">Edit ›</span>
+                      <ChevronRight size={18} className="chev" />
                     </button>
                   ))}
                 </div>

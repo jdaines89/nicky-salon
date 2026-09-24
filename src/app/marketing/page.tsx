@@ -1,5 +1,6 @@
 "use client";
 
+import { BellRing, Cake, Gift, PhoneCall, Sunrise } from "lucide-react";
 import { useState } from "react";
 import { useSalon } from "@/components/data";
 import { Seg } from "@/components/ui";
@@ -57,7 +58,7 @@ export default function Marketing() {
       .sort((a, b) => a.time.localeCompare(b.time));
     body = (
       <>
-        <h2>📅 Appointment reminders</h2>
+        <h2><BellRing size={18} />Appointment reminders</h2>
         <p className="sub">A reminder the day before is the cheapest no-show insurance there is.</p>
         <div className="row" style={{ marginBottom: 12 }}>
           <Seg value={remDay} options={["Tomorrow", "Today", "Pick a date"] as const} onChange={setRemDay} />
@@ -89,7 +90,7 @@ export default function Marketing() {
     const recall = recallClientsOrdered(clients, bookings, today);
     body = (
       <>
-        <h2>📞 Win-back</h2>
+        <h2><PhoneCall size={18} />Win-back</h2>
         <p className="sub">Visited before, nothing booked next. A warm nudge brings most of them back. Most overdue by her own rhythm first.</p>
         {editor("winback", "{name}, {last_visit}")}
         <div className="card">
@@ -115,7 +116,7 @@ export default function Marketing() {
       .sort((a, b) => Number((a.birthday || "01-01").split("-")[1]) - Number((b.birthday || "01-01").split("-")[1]));
     body = (
       <>
-        <h2>🎂 Birthdays this month</h2>
+        <h2><Cake size={18} />Birthdays this month</h2>
         <p className="sub">A free little extra on their birthday earns more than it costs, and they tell their friends.</p>
         {editor("birthday", "{name}, {birthday}")}
         <div className="card">
@@ -136,7 +137,7 @@ export default function Marketing() {
     const offers = quietSlotOffers(clients, bookings, today);
     body = (
       <>
-        <h2>🕳️ Fill a quiet slot</h2>
+        <h2><Sunrise size={18} />Fill a quiet slot</h2>
         <p className="sub">
           An empty hour earns nothing. This points the reward you already give at the hours that are actually
           empty, and names the slot, so there&apos;s one decision to make instead of three.
@@ -160,7 +161,7 @@ export default function Marketing() {
               const why = o.reason === "loyalty" ? "your loyalty reward" : "it's been a while";
               const badge = o.reason === "loyalty"
                 ? <span className="badge gold">💛 reward earned</span>
-                : <span className="badge">📉 overdue</span>;
+                : <span className="badge">overdue</span>;
               return (
                 <MarketingRow key={o.client.id} client={o.client} badge={badge}
                   message={renderTpl(tpls.quietslot, { name: firstName(o.client.name), day, time, why })}
@@ -178,7 +179,7 @@ export default function Marketing() {
       .sort((a, b) => (a.c.name < b.c.name ? -1 : a.c.name > b.c.name ? 1 : 0));
     body = (
       <>
-        <h2>💛 Loyalty rewards due</h2>
+        <h2><Gift size={18} />Loyalty rewards due</h2>
         <p className="sub">These clients have earned 20% off their next visit. Telling them is the easiest booking you&apos;ll ever make.</p>
         {editor("loyalty", "{name}, {visits}")}
         <div className="card">
@@ -197,7 +198,7 @@ export default function Marketing() {
   return (
     <>
       <h1>Marketing</h1>
-      <p className="sub">Tap 💬 WhatsApp and the message is already written. Read it, tweak it, send it.</p>
+      <p className="sub">Tap WhatsApp and the message is already written. Read it, tweak it, send it.</p>
       <div style={{ marginBottom: 16 }}>
         <Seg value={section} options={SECTIONS} onChange={setSection} />
       </div>

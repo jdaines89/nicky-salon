@@ -53,9 +53,11 @@ function SignIn() {
   }
 
   return (
-    <div className="card narrow">
-      <h2>Sign in</h2>
-      <p className="sub">Only invited accounts can sign in. Use the email your invite went to.</p>
+    <div className="auth"><div className="card">
+      <div className="mono-lg" aria-hidden>N</div>
+      <div className="eyebrow">Beauty &amp; Nails</div>
+      <h1>Welcome back</h1>
+      <p className="sub">Sign in with the email your invite went to.</p>
       <form onSubmit={submit} className="stack">
         <input type="email" required placeholder="Email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         <input type="password" required placeholder="Password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
@@ -63,7 +65,7 @@ function SignIn() {
         <button type="button" className="linkish forgot" onClick={forgot}>Forgot your password?</button>
       </form>
       {msg && <p className="small muted" style={{ marginBottom: 0 }}>{msg}</p>}
-    </div>
+    </div></div>
   );
 }
 
@@ -80,14 +82,15 @@ function SetPassword({ email, reset, onDone }: { email: string; reset: boolean; 
   }
 
   return (
-    <div className="card narrow">
-      <h2>{reset ? "Choose a new password" : "Welcome"}</h2>
+    <div className="auth"><div className="card">
+      <div className="mono-lg" aria-hidden>N</div>
+      <h1>{reset ? "Choose a new password" : "Welcome, lovely"}</h1>
       <p className="sub">{reset ? `For ${email}.` : `Choose a password for ${email}. You'll use it to sign in from now on.`}</p>
       <form onSubmit={submit} className="stack">
         <input type="password" required placeholder="New password (8+ characters)" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
         <button type="submit">Save and continue</button>
       </form>
       {msg && <p className="small" style={{ color: "var(--danger)", marginBottom: 0 }}>{msg}</p>}
-    </div>
+    </div></div>
   );
 }

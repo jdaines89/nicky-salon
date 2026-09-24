@@ -1,5 +1,6 @@
 "use client";
 
+import { Camera, Image as ImageIcon } from "lucide-react";
 /**
  * Nail photos on a client profile: "what did we have last time?" is the
  * question she is asked most at the chair, and for nail work a shade name three
@@ -180,7 +181,7 @@ export function ClientPhotos({ clientId, bookings, today, say }: {
     <div className="card">
       <div className="row">
         <h2 className="grow" style={{ margin: 0 }}>Nail photos</h2>
-        {state === "ready" && <button className="gold" onClick={() => setAdding(true)}>＋ Add photo</button>}
+        {state === "ready" && <button className="gold" onClick={() => setAdding(true)}><Camera size={17} />Add photo</button>}
       </div>
 
       {state === "loading" && <p className="small muted">Loading photos…</p>}
@@ -326,8 +327,8 @@ function AddPhotoSheet({ clientId, bookings, today, onClose, onSaved }: {
       <div className="stack">
         <p className="small muted" style={{ margin: 0 }}>Take one now, or pick a picture you already took.</p>
         <div className="fields2">
-          <button type="button" onClick={() => cameraRef.current?.click()} disabled={working}>📷 Camera</button>
-          <button type="button" className="ghost" onClick={() => pickRef.current?.click()} disabled={working}>🖼️ Choose photo</button>
+          <button type="button" onClick={() => cameraRef.current?.click()} disabled={working}><Camera size={17} />Camera</button>
+          <button type="button" className="ghost" onClick={() => pickRef.current?.click()} disabled={working}><ImageIcon size={17} />Choose photo</button>
         </div>
         <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={onFile} />
         <input ref={pickRef} type="file" accept="image/*" hidden onChange={onFile} />

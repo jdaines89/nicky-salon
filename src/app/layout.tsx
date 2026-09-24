@@ -1,4 +1,8 @@
 import type { Metadata, Viewport } from "next";
+// Fonts ship with the site: no third-party request, and they load on weak LTE.
+import "@fontsource-variable/fraunces/full.css";
+import "@fontsource-variable/fraunces/full-italic.css";
+import "@fontsource-variable/plus-jakarta-sans";
 import "./globals.css";
 import { AuthGate } from "@/components/auth-gate";
 import { Header } from "@/components/header";
@@ -9,19 +13,11 @@ export const metadata: Metadata = {
   description: "Bookings, clients and takings for Nicky's Beauty & Nails.",
 };
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#0E3B39" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#F5F1EA", viewportFit: "cover" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-ZA">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;1,9..144,500&family=Work+Sans:wght@400;500;600;700&display=swap"
-        />
-      </head>
       <body>
         <Header />
         <main className="shell">

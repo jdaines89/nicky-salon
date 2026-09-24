@@ -1,34 +1,41 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { CheckCircle2, MessageCircle, MoreHorizontal, Phone, Send, X, type LucideIcon } from "lucide-react";
 import { smsLink, telLink, waLink } from "@/lib/salon";
 
 /** 'R 1,250' — whole Rand, the way she'd say it. */
 export function rand(n: number): string {
-  return "R " + Math.round(n).toLocaleString("en-ZA").replace(/ /g, " ");
+  return "R " + Math.round(n).toLocaleString("en-ZA").replace(/ /g, " ");
 }
 
 /**
  * A bottom sheet on phones, a centred panel on wider screens. Unlike the old
  * Streamlit dialog, a tap outside does NOT close it: a stray tap mid-edit
  * used to throw away half a booking. Only Close, Cancel or Save do.
+ * Rendered into <body> so no ancestor's transform or filter can trap it.
  */
 export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+  const [mounted, setMounted] = useState(false);
   useEffect(() => {
+    setMounted(true);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = prev; };
   }, []);
-  return (
+  if (!mounted) return null;
+  return createPortal(
     <div className="overlay" role="dialog" aria-modal="true" aria-label={title}>
       <div className="sheet">
         <div className="sheet-head">
           <h2 className="grow">{title}</h2>
-          <button className="ghost" onClick={onClose} aria-label="Close">✕</button>
+          <button type="button" className="x" onClick={onClose} aria-label="Close"><X size={20} /></button>
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -58,19 +65,19 @@ export function Contact({ phone, message }: { phone: string | null; message: str
   const wa = waLink(phone, message), sms = smsLink(phone, message), tel = telLink(phone);
   if (!wa && !sms && !tel) return <span className="small muted">No number</span>;
   return (
-    <div className="row" style={{ flexWrap: "nowrap" }}>
-      {wa ? <a className="btn gold" href={wa} target="_blank" rel="noreferrer">💬 WhatsApp</a>
-        : sms ? <a className="btn gold" href={sms}>✉️ SMS</a>
-        : <a className="btn gold" href={tel!}>📞 Call</a>}
+    <div className="row" style={{ flexWrap: "nowrap", gap: 6 }}>
+      {wa ? <a className="btn soft pill" href={wa} target="_blank" rel="noreferrer" style={{ minHeight: 42 }}><MessageCircle size={17} />WhatsApp</a>
+        : sms ? <a className="btn soft pill" href={sms} style={{ minHeight: 42 }}><Send size={16} />SMS</a>
+        : <a className="btn soft pill" href={tel!} style={{ minHeight: 42 }}><Phone size={16} />Call</a>}
       {wa && (sms || tel) && (
         <div style={{ position: "relative" }}>
-          <button className="ghost" aria-label="More ways to contact" onClick={() => setMore(!more)}>⋯</button>
+          <button type="button" className="ghost icon pill" style={{ width: 42, minHeight: 42 }} aria-label="More ways to contact" onClick={() => setMore(!more)}>
+            <MoreHorizontal size={18} />
+          </button>
           {more && (
-            <div className="card tight" style={{ position: "absolute", right: 0, top: 48, zIndex: 10, minWidth: 180 }}>
-              <div className="stack">
-                {sms && <a className="btn ghost" href={sms}>✉️ SMS instead</a>}
-                {tel && <a className="btn ghost" href={tel}>📞 Call</a>}
-              </div>
+            <div className="menu" style={{ top: 48 }}>
+              {sms && <a className="btn" href={sms}><Send size={17} />SMS instead</a>}
+              {tel && <a className="btn" href={tel}><Phone size={17} />Call</a>}
             </div>
           )}
         </div>
@@ -89,6 +96,17 @@ export function Kpi({ label, value, note, tone }: { label: string; value: ReactN
   );
 }
 
+/** A friendly empty state: an icon, what's missing, and what to do about it. */
+export function Empty({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children?: ReactNode }) {
+  return (
+    <div className="empty">
+      <Icon size={26} strokeWidth={1.6} aria-hidden />
+      <b>{title}</b>
+      {children}
+    </div>
+  );
+}
+
 export function statusBadge(status: string) {
   const cls = status === "confirmed" ? "" : status === "pending" ? "gold" : status === "no-show" ? "danger" : "muted";
   return <span className={`badge ${cls}`}>{status === "no-show" ? "No-show" : status[0].toUpperCase() + status.slice(1)}</span>;
@@ -102,12 +120,6 @@ export function useToast(): [ReactNode, (msg: string) => void] {
     const t = setTimeout(() => setMsg(null), 3500);
     return () => clearTimeout(t);
   }, [msg]);
-  const node = msg ? (
-    <div role="status" style={{
-      position: "fixed", left: 16, right: 16, bottom: "calc(90px + env(safe-area-inset-bottom))", zIndex: 60,
-      margin: "0 auto", maxWidth: 480, background: "var(--teal)", color: "#fff", borderRadius: 12, padding: "12px 16px",
-      boxShadow: "0 6px 24px rgba(0,0,0,0.18)",
-    }}>{msg}</div>
-  ) : null;
+  const node = msg ? <div role="status" className="toast"><CheckCircle2 size={20} />{msg}</div> : null;
   return [node, setMsg];
 }
