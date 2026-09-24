@@ -7,6 +7,7 @@ import "./globals.css";
 import { AuthGate } from "@/components/auth-gate";
 import { Header } from "@/components/header";
 import { DataProvider } from "@/components/data";
+import { LOOK_BOOT } from "@/components/look";
 
 export const metadata: Metadata = {
   title: "Nicky — Beauty & Nails",
@@ -17,7 +18,10 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, them
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-ZA">
+    <html lang="en-ZA" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: LOOK_BOOT }} />
+      </head>
       <body>
         <Header />
         <main className="shell">

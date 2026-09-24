@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Contact, Empty, rand, statusBadge, useToast } from "@/components/ui";
 import { updateBooking } from "@/lib/db";
+import type { BookingWithServices } from "@/lib/types";
 import { recallClientsOrdered } from "@/lib/insights";
 import {
   addDays, bookingNet, bookingsAwaitingDecision, bookingTitle, clientInitial, clientVisits,
@@ -108,11 +109,15 @@ export default function Today() {
           )}
         </Link>
       ) : (
-        <div className="hero quiet">
-          <div className="hero-top"><span className="hero-tag">{live.length ? "All done for today" : "Nothing booked today"}</span></div>
-          <div className="hero-name" style={{ marginTop: 4 }}>{live.length ? "Well done. Time to put your feet up." : "A good moment to work the recall list."}</div>
-          <Link href="/bookings/?new=1" className="btn gold pill" style={{ marginTop: 14, alignSelf: "flex-start" }}><Plus size={18} />New booking</Link>
-        </div>
+        live.length ? (
+          <DayWrap today={today} live={live} bookings={bookings} />
+        ) : (
+          <div className="hero quiet">
+            <div className="hero-top"><span className="hero-tag">Nothing booked today</span></div>
+            <div className="hero-name" style={{ marginTop: 4 }}>A slow day. A good moment to work the recall list.</div>
+            <Link href="/bookings/?new=1" className="btn gold pill" style={{ marginTop: 14, alignSelf: "flex-start" }}><Plus size={18} />New booking</Link>
+          </div>
+        )
       )}
 
       <div className="stats">
@@ -259,27 +264,61 @@ export default function Today() {
   );
 }
 
+/**
+ * The end of her day, said back to her: who she saw, what it earned, and how
+ * many are already booked to come back. The money blurs until tapped, like
+ * the takings above: a client may still be in the chair.
+ */
+function DayWrap({ today, live, bookings }: { today: string; live: BookingWithServices[]; bookings: BookingWithServices[] }) {
+  const [reveal, setReveal] = useState(false);
+  const confirmed = live.filter((b) => b.status === "confirmed");
+  const earned = confirmed.reduce((s, b) => s + bookingNet(b), 0);
+  const tips = confirmed.reduce((s, b) => s + (Number(b.tip) || 0), 0);
+  const pending = live.length - confirmed.length;
+  const seen = [...new Set(live.map((b) => b.client_id).filter((id): id is string => !!id))];
+  const rebooked = seen.filter((id) => bookings.some((b) => b.client_id === id && b.date > today && b.status !== "cancelled")).length;
+  const line = rebooked && rebooked === seen.length ? "Every one of them is booked to come back."
+    : rebooked ? `${rebooked} of ${seen.length} already booked to come back.`
+    : "Nobody's booked their next visit yet. Worth a message tomorrow.";
+  return (
+    <div className="hero wrap">
+      <div className="hero-top"><span className="hero-tag">That&apos;s a wrap</span><span className="hero-in">{live.length} {live.length === 1 ? "client" : "clients"}</span></div>
+      <button type="button" className={`wrap-money${reveal ? " on" : ""}`} onClick={() => setReveal(!reveal)} aria-label={reveal ? "Hide today's takings" : "Show today's takings"}>
+        <span className="wrap-big">{rand(earned)}</span>
+        <span className="wrap-sub">{reveal ? `earned today${tips ? ` · plus ${rand(tips)} in tips` : ""}` : "tap to see today's takings"}</span>
+      </button>
+      <div className="hero-svc"><Heart size={14} style={{ verticalAlign: -2, color: "var(--hero-gold)" }} /> {line}</div>
+      {pending > 0 && <div className="hero-note"><Hourglass size={14} />{pending} still pending. Confirm {pending === 1 ? "it" : "them"} so {pending === 1 ? "it counts" : "they count"}.</div>}
+    </div>
+  );
+}
+
 const shortRand = (n: number) => (n >= 10000 ? `R${(n / 1000).toFixed(0)}k` : n >= 1000 ? `R${(n / 1000).toFixed(1).replace(/\.0$/, "")}k` : `R${Math.round(n)}`);
 const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 
 const TODAY_CSS = `
 .hero { display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #fff; border-radius: 26px; padding: 18px 18px 16px; margin-bottom: 12px;
-  background: radial-gradient(120% 140% at 100% 0%, #2B7169 0%, var(--teal) 55%, #0A2C2A 100%); box-shadow: 0 18px 40px -20px rgba(15,59,56,0.8); position: relative; overflow: hidden; }
+  background: radial-gradient(120% 140% at 100% 0%, var(--hero-a) 0%, var(--teal) 55%, var(--hero-c) 100%); box-shadow: 0 18px 40px -20px rgba(15,59,56,0.8); position: relative; overflow: hidden; }
 .hero::after { content: ""; position: absolute; right: -40px; top: -40px; width: 160px; height: 160px; border-radius: 50%; background: radial-gradient(circle, rgba(203,163,106,0.35), transparent 70%); pointer-events: none; }
 .hero:active { transform: scale(0.99); }
 .hero-top { display: flex; align-items: center; gap: 8px; }
-.hero-tag { font-size: 11.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #E7C995; }
+.hero-tag { font-size: 11.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--hero-gold); }
 .hero-in { margin-left: auto; font-size: 13px; font-weight: 650; background: rgba(255,255,255,0.12); padding: 3px 10px; border-radius: 999px; }
 .hero-main { display: flex; align-items: center; gap: 14px; }
 .hero-time { font-family: var(--serif); font-size: 38px; font-weight: 400; letter-spacing: -0.03em; font-variant-numeric: lining-nums; }
 .hero-name { font-family: var(--serif); font-size: 22px; font-weight: 450; line-height: 1.15; }
 .hero-svc { font-size: 14px; color: rgba(255,255,255,0.78); }
-.hero-note { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #F3E6CF; background: rgba(255,255,255,0.08); border-radius: 12px; padding: 6px 10px; }
+.hero-note { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--hero-gold); background: rgba(255,255,255,0.08); border-radius: 12px; padding: 6px 10px; }
 .hero-progress { display: flex; gap: 4px; margin-top: 6px; }
 .hero-progress i { flex: 1; height: 4px; border-radius: 99px; background: rgba(255,255,255,0.18); }
 .hero-progress i.done { background: rgba(255,255,255,0.6); }
-.hero-progress i.now { background: #E7C995; }
-.hero.quiet { background: linear-gradient(145deg, #FFFFFF, var(--gold-soft)); color: var(--ink); box-shadow: var(--shadow-1); }
+.hero-progress i.now { background: var(--hero-gold); }
+.wrap-money { display: flex; flex-direction: column; align-items: flex-start; gap: 0; background: none; border: 0; padding: 4px 0 2px; min-height: 0; color: inherit; text-align: left; }
+.wrap-money:hover { background: none; }
+.wrap-big { font-family: var(--serif); font-size: 44px; font-weight: 400; letter-spacing: -0.03em; line-height: 1.05; filter: blur(9px); opacity: 0.85; transition: filter .35s var(--ease); font-variant-numeric: lining-nums; }
+.wrap-money.on .wrap-big { filter: none; opacity: 1; }
+.wrap-sub { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.75); }
+.hero.quiet { background: linear-gradient(145deg, var(--card), var(--gold-soft)); color: var(--ink); box-shadow: var(--shadow-1); }
 .hero.quiet .hero-tag { color: var(--gold-2); }
 
 .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
@@ -294,9 +333,9 @@ button.stat:hover { background: var(--card); }
 .up { color: var(--ok); } .down { color: var(--danger); }
 .up svg, .down svg { vertical-align: -2px; }
 
-.card.attention { box-shadow: var(--shadow-1), inset 0 0 0 1.5px rgba(189,145,85,0.35); }
-button.ok { background: var(--ok); }
-button.ok:hover { background: #276B4D; }
+.card.attention { box-shadow: var(--shadow-1), inset 0 0 0 1.5px color-mix(in srgb, var(--gold) 40%, transparent); }
+button.ok { background: var(--ok); color: var(--on-ok); }
+button.ok:hover { background: color-mix(in srgb, var(--ok) 88%, black); }
 .decide button { min-height: 42px; padding: 6px 14px; font-size: 14px; }
 
 .tl { display: flex; flex-direction: column; }
@@ -316,7 +355,7 @@ button.ok:hover { background: #276B4D; }
 .tl .meta { font-size: 13px; color: var(--ink-soft); }
 .tl-note { display: flex; align-items: center; gap: 4px; font-style: italic; }
 
-.avatar.bday { background: var(--rose-soft); color: #8E4E3B; font-family: var(--serif); }
+.avatar.bday { background: var(--rose-soft); color: var(--rose); font-family: var(--serif); }
 .recent { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .recent-c { display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: var(--ink); padding: 6px 2px; border-radius: 16px; min-width: 0; }
 .recent-c:hover { background: var(--teal-mist); }

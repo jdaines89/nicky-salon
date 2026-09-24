@@ -4,11 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  BarChart3, CalendarDays, Ellipsis, Gem, Home, LogOut, Megaphone, Plus, UserRound, Users,
+  BarChart3, CalendarDays, Ellipsis, Gem, Home, Images, LogOut, Megaphone, Palette, Plus, UserRound, Users,
   type LucideIcon,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Sheet } from "@/components/ui";
+import { LookPicker } from "@/components/look";
 
 type Tab = [href: string, label: string, Icon: LucideIcon];
 const MAIN: Tab[] = [
@@ -17,6 +18,7 @@ const MAIN: Tab[] = [
 ];
 const PEOPLE: Tab = ["/clients/", "Clients", Users];
 const MORE: Tab[] = [
+  ["/lookbook/", "Lookbook", Images],
   ["/services/", "Services", Gem],
   ["/marketing/", "Marketing", Megaphone],
   ["/reports/", "Reports", BarChart3],
@@ -71,6 +73,10 @@ export function Header() {
             {menu && (
               <div className="menu" role="menu">
                 <div className="who">Signed in as<br /><b style={{ color: "var(--ink)" }}>{email}</b></div>
+                <div style={{ padding: "8px 6px 10px", borderBottom: "1px solid var(--line)", marginBottom: 4 }}>
+                  <div className="section-label" style={{ marginBottom: 8 }}><Palette size={14} />Your look</div>
+                  <LookPicker />
+                </div>
                 <button type="button" role="menuitem" onClick={() => supabase.auth.signOut()}><LogOut size={18} />Sign out</button>
               </div>
             )}
@@ -84,7 +90,11 @@ export function Header() {
               <Link key={href} href={href} className={path === href ? "on" : ""}><Icon size={26} strokeWidth={1.8} />{label}</Link>
             ))}
           </div>
-          <button type="button" className="ghost" style={{ width: "100%", marginTop: 14 }} onClick={() => supabase.auth.signOut()}>
+          <div className="more-sec">
+            <div className="section-label"><Palette size={14} />Your look</div>
+            <LookPicker />
+          </div>
+          <button type="button" className="ghost" style={{ width: "100%", marginTop: 18 }} onClick={() => supabase.auth.signOut()}>
             <LogOut size={18} />Sign out
           </button>
         </Sheet>

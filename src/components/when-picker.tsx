@@ -292,10 +292,10 @@ button.wp-day .dots i.free { background: transparent; border: 1px solid var(--in
 button.wp-day.today .dow { color: var(--gold-2); }
 button.wp-day.past { opacity: 0.55; }
 button.wp-day.sun .dow { color: var(--rose); }
-button.wp-day.on { background: var(--teal); color: #fff; border-color: var(--teal); box-shadow: 0 8px 18px -8px rgba(15,59,56,0.7); }
-button.wp-day.on .dow { color: rgba(255,255,255,0.75); }
+button.wp-day.on { background: var(--teal); color: var(--on-accent); border-color: var(--teal); box-shadow: 0 8px 18px -8px rgba(15,59,56,0.7); }
+button.wp-day.on .dow { color: color-mix(in srgb, var(--on-accent) 75%, transparent); }
 button.wp-day.on .dots i { background: var(--gold); }
-button.wp-day.on .dots i.free { border-color: rgba(255,255,255,0.6); background: transparent; }
+button.wp-day.on .dots i.free { border-color: color-mix(in srgb, var(--on-accent) 60%, transparent); background: transparent; }
 
 .wp-cal { animation: pop .18s var(--ease) both; }
 .wp-calnav { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
@@ -306,13 +306,13 @@ button.wp-day.on .dots i.free { border-color: rgba(255,255,255,0.6); background:
 .wp-grid button.c i { width: 4px; height: 4px; border-radius: 50%; background: var(--teal-3); position: absolute; bottom: 6px; }
 .wp-grid button.c.today { color: var(--gold-2); font-weight: 800; }
 .wp-grid button.c.past { color: var(--ink-faint); }
-.wp-grid button.c.on { background: var(--teal); color: #fff; }
+.wp-grid button.c.on { background: var(--teal); color: var(--on-accent); }
 .wp-grid button.c.on i { background: var(--gold); }
 
 .wp-glance { margin: 14px 0 4px; }
 .wp-glance .track { position: relative; height: 12px; border-radius: 99px; background: repeating-linear-gradient(90deg, var(--paper-2) 0 1px, var(--teal-mist) 1px calc(100% / 11)); overflow: hidden; }
-.wp-glance .busy { position: absolute; top: 0; bottom: 0; background: #A9C6C1; border-radius: 3px; }
-.wp-glance .me { position: absolute; top: 0; bottom: 0; background: var(--gold); border-radius: 3px; box-shadow: 0 0 0 2px #fff; transition: left .25s var(--ease), width .25s var(--ease); }
+.wp-glance .busy { position: absolute; top: 0; bottom: 0; background: var(--busy); border-radius: 3px; }
+.wp-glance .me { position: absolute; top: 0; bottom: 0; background: var(--gold); border-radius: 3px; box-shadow: 0 0 0 2px var(--card); transition: left .25s var(--ease), width .25s var(--ease); }
 .wp-glance .me.clash { background: var(--danger); }
 .wp-glance .ticks { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--ink-soft); margin-top: 4px; font-weight: 600; }
 
@@ -328,8 +328,8 @@ button.ts-slot small { font-size: 11px; font-weight: 600; color: var(--ink-soft)
 button.ts-slot:hover { background: var(--teal-mist); border-color: var(--teal-soft); }
 button.ts-slot.snug { background: var(--gold-soft); }
 button.ts-slot .spark { position: absolute; top: 5px; right: 6px; color: var(--gold-2); }
-button.ts-slot.on { background: var(--teal); color: #fff; border-color: var(--teal); box-shadow: 0 8px 18px -8px rgba(15,59,56,0.7); }
-button.ts-slot.on small, button.ts-slot.on .spark { color: rgba(255,255,255,0.8); }
+button.ts-slot.on { background: var(--teal); color: var(--on-accent); border-color: var(--teal); box-shadow: 0 8px 18px -8px rgba(15,59,56,0.7); }
+button.ts-slot.on small, button.ts-slot.on .spark { color: color-mix(in srgb, var(--on-accent) 80%, transparent); }
 .ts-none { margin: 4px 0 12px; padding: 14px; border-radius: 14px; background: var(--paper); color: var(--ink-2); font-size: 14px; text-align: center; }
 .ts-foot { display: flex; align-items: center; gap: 8px; min-height: 32px; }
 .cc { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line-2); animation: pop .18s var(--ease) both; }
