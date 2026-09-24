@@ -151,7 +151,7 @@ const LOOKBOOK_CSS = `
 .lb-tile img, .lb-tile .skeleton { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 0; transition: transform .4s var(--ease); }
 .lb-tile:hover img { transform: scale(1.04); }
 .lb-tile:active { transform: scale(0.98); }
-.lb-cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 8px 6px; font-size: 11.5px; font-weight: 650; color: #fff; text-align: left;
+.lb-cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 8px 6px; font-size: 13px; font-weight: 650; color: #fff; text-align: left;
   background: linear-gradient(transparent, rgba(0,0,0,0.55)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0; transition: opacity .2s; }
 .lb-tile.big .lb-cap, .lb-tile:hover .lb-cap { opacity: 1; }
 .lb-full { width: 100%; border-radius: 18px; display: block; max-height: 64vh; object-fit: contain; background: var(--paper-2); }

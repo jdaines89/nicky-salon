@@ -124,7 +124,7 @@ function Clients() {
           .cl-layout.has-profile .cl-back { display: none; }
         }
         @media (max-width: 899px) { .cl-layout.has-profile .cl-list { display: none; } }
-        .cl-letter { font-family: var(--serif); font-size: 15px; color: var(--gold-2); padding: 12px 6px 2px; border-bottom: 1px solid var(--line); }
+        .cl-letter { font-family: var(--serif); font-size: 16px; color: var(--gold-2); padding: 12px 6px 2px; border-bottom: 1px solid var(--line); }
         .list > .item.on { background: var(--teal-soft); border-radius: 14px; }
       `}</style>
 

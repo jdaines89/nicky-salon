@@ -262,7 +262,7 @@ export const BOOKINGS_CSS = `
 .sp-name { font-weight: 650; line-height: 1.3; }
 button.sp-x { width: 34px; min-height: 34px; padding: 0; border-radius: 50%; background: none; color: var(--ink-soft); border: 0; }
 button.sp-x:hover { background: var(--paper-2); color: var(--danger); }
-.sp-sum { display: flex; justify-content: space-between; padding: 2px 12px; font-size: 13.5px; color: var(--ink-soft); }
+.sp-sum { display: flex; justify-content: space-between; padding: 2px 12px; font-size: 15px; color: var(--ink-soft); }
 .sp-sum b { color: var(--ink); }
 .sp-panel { margin-top: 10px; }
 .sp-chosen + .sp-panel { padding-top: 12px; border-top: 1px dashed var(--line-2); }
@@ -278,11 +278,11 @@ button.sp-opt:active { transform: none; background: var(--teal-soft); }
 .cp-list { background: var(--paper); border-radius: 16px; padding: 0 8px; }
 .list.bk-rows > .item { flex-wrap: nowrap; }
 .list.bk-rows > .item > .grow { flex: 1 1 auto; }
-.bk-label { font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+.bk-label { font-size: 14.5px; font-weight: 600; color: var(--ink-soft); }
 .bk-line { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 6px 6px 6px 12px; }
 .bk-picklist { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 0 8px; }
-.badge.bk-new { background: var(--rose-soft); color: var(--rose); }
-.bk-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12.5px; color: var(--ink-soft); margin: 4px 0 10px; }
+.badge.bk-new { background: var(--rose-soft); color: color-mix(in srgb, var(--rose) 60%, var(--ink)); }
+.bk-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 14px; color: var(--ink-soft); margin: 4px 0 10px; }
 .bk-legend span { display: inline-flex; align-items: center; gap: 5px; }
 .bk-legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 .bk-nav { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
@@ -295,14 +295,14 @@ button.sp-opt:active { transform: none; background: var(--teal-soft); }
 
 /* Month: seven columns across at any width, no sideways scroll. */
 .bk-month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
-.bk-month .dow { text-align: center; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-soft); padding: 2px 0; }
-.bk-month .other { min-height: 58px; border-radius: 10px; padding: 6px 2px; text-align: center; color: var(--ink-faint); font-size: 13px; }
+.bk-month .dow { text-align: center; font-size: 12.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-soft); padding: 2px 0; }
+.bk-month .other { min-height: 58px; border-radius: 10px; padding: 6px 2px; text-align: center; color: var(--ink-faint); font-size: 14.5px; }
 button.bk-mday { min-height: 62px; padding: 6px 1px; border-radius: 14px; background: var(--paper); color: var(--ink); border: 0;
-  flex-direction: column; justify-content: flex-start; gap: 3px; font-weight: 600; font-size: 14px; min-width: 0; }
+  flex-direction: column; justify-content: flex-start; gap: 3px; font-weight: 600; font-size: 15.5px; min-width: 0; }
 button.bk-mday:hover { background: var(--teal-soft); }
 button.bk-mday.today { background: var(--teal); color: var(--on-accent); border-color: var(--teal); }
 button.bk-mday.focus:not(.today) { box-shadow: inset 0 0 0 2px var(--gold); }
-.bk-load { display: block; width: calc(100% - 6px); font-size: 10px; line-height: 1.2; font-weight: 650; border-radius: 8px; padding: 2px 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bk-load { display: block; width: calc(100% - 6px); font-size: 11.5px; line-height: 1.2; font-weight: 650; border-radius: 8px; padding: 2px 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bk-load.busy { background: var(--teal-3); color: var(--on-accent); }
 .bk-load.moderate { background: var(--teal-soft); color: var(--teal); }
 .bk-load.quiet { background: var(--gold-soft); color: var(--gold-ink); }
@@ -311,15 +311,15 @@ button.bk-mday.focus:not(.today) { box-shadow: inset 0 0 0 2px var(--gold); }
 
 /* Week: an hour grid, seven days across, narrow time column. */
 .bk-week { display: grid; grid-template-columns: 30px repeat(7, minmax(0, 1fr)); gap: 3px; }
-.bk-week .hr { font-size: 10px; color: var(--ink-soft); text-align: right; padding-right: 2px; padding-top: 2px; font-variant-numeric: tabular-nums; }
+.bk-week .hr { font-size: 11.5px; color: var(--ink-soft); text-align: right; padding-right: 2px; padding-top: 2px; font-variant-numeric: tabular-nums; }
 .bk-week .cell { min-height: 30px; background: var(--paper); border: 0; border-radius: 8px; padding: 2px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-button.bk-whead { min-height: 52px; padding: 4px 1px; flex-direction: column; gap: 0; background: var(--paper); color: var(--ink); border: 0; border-radius: 14px; font-size: 11px; min-width: 0; }
+button.bk-whead { min-height: 52px; padding: 4px 1px; flex-direction: column; gap: 0; background: var(--paper); color: var(--ink); border: 0; border-radius: 14px; font-size: 12.5px; min-width: 0; }
 button.bk-whead b { font-size: 16px; }
 button.bk-whead:hover { background: var(--teal-soft); }
 button.bk-whead.today { background: var(--teal); color: var(--on-accent); border-color: var(--teal); }
 button.bk-wadd { min-height: 34px; padding: 0; background: transparent; color: var(--gold-2); border: 1.5px dashed var(--line-2); border-radius: 10px; font-size: 18px; min-width: 0; }
 button.bk-wadd:hover { background: var(--gold); }
-button.bk-blk { min-height: 0; padding: 3px 4px; border-radius: 6px; border: 0; color: #fff; font-size: 10px; line-height: 1.2; font-weight: 600;
+button.bk-blk { min-height: 0; padding: 3px 4px; border-radius: 6px; border: 0; color: #fff; font-size: 11.5px; line-height: 1.2; font-weight: 600;
   display: block; text-align: left; width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 button.bk-blk span { display: block; overflow: hidden; text-overflow: ellipsis; font-weight: 400; opacity: 0.9; }
 @media (max-width: 480px) { button.bk-blk span, button.bk-blk em { display: none; } }
@@ -329,18 +329,18 @@ button.bk-blk em { font-style: normal; }
 .bk-daysum { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 12px 0 16px; }
 .bk-daysum > div { background: var(--paper); border-radius: 14px; padding: 8px 10px; display: flex; flex-direction: column; }
 .bk-daysum b { font-family: var(--serif); font-weight: 450; font-size: 20px; line-height: 1.2; font-variant-numeric: lining-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bk-daysum span { font-size: 12px; color: var(--ink-soft); font-weight: 600; }
+.bk-daysum span { font-size: 13.5px; color: var(--ink-soft); font-weight: 600; }
 .bk-tl { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 6px; margin-bottom: 12px; }
 .bk-tl .lbls { position: relative; }
-.bk-tl .lbls span { position: absolute; right: 0; font-size: 11px; font-weight: 600; color: var(--ink-soft); transform: translateY(-50%); font-variant-numeric: tabular-nums; }
+.bk-tl .lbls span { position: absolute; right: 0; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); transform: translateY(-50%); font-variant-numeric: tabular-nums; }
 .bk-tl .track { position: relative; background-image: linear-gradient(var(--line) 1px, transparent 1px); }
 button.bk-gap { position: absolute; left: 4px; right: 4px; min-height: 0; padding: 0 10px; border-radius: 12px; background: transparent;
-  border: 1.5px dashed var(--line-2); color: var(--ink-soft); font-size: 13px; font-weight: 650; justify-content: flex-start; align-items: flex-start; padding-top: 6px; gap: 6px; overflow: hidden; }
-button.bk-gap span { font-weight: 500; color: var(--ink-faint); }
+  border: 1.5px dashed var(--line-2); color: var(--ink-soft); font-size: 14.5px; font-weight: 650; justify-content: flex-start; align-items: flex-start; padding-top: 6px; gap: 6px; overflow: hidden; }
+button.bk-gap span { font-weight: 500; color: var(--ink-soft); }
 button.bk-gap:hover { background: var(--gold-soft); border-color: var(--gold); color: var(--gold-ink); }
 button.bk-appt { position: absolute; min-height: 0; padding: 6px 10px 6px 12px; border-radius: 12px; border: 0; color: var(--ink);
   background: color-mix(in srgb, var(--c) 16%, var(--card)); box-shadow: inset 4px 0 0 var(--c), 0 0 0 2px var(--card);
-  flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 1px; text-align: left; overflow: hidden; font-size: 14px; line-height: 1.25; }
+  flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 1px; text-align: left; overflow: hidden; font-size: 15.5px; line-height: 1.25; }
 button.bk-appt:hover { background: color-mix(in srgb, var(--c) 24%, var(--card)); }
 button.bk-appt.short { flex-direction: row; align-items: center; gap: 8px; padding-top: 0; padding-bottom: 0; }
 button.bk-appt.off { opacity: 0.6; }
@@ -348,18 +348,18 @@ button.bk-appt.off .n { text-decoration: line-through; }
 button.bk-appt .n { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: flex; gap: 6px; align-items: center; }
 button.bk-appt .n .nm { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 button.bk-appt.short .w { flex: 1 1 0; min-width: 0; }
-button.bk-appt .n em { font-style: normal; font-size: 10.5px; font-weight: 700; color: var(--c); background: var(--card); padding: 0 6px; border-radius: 99px; flex: none; }
-button.bk-appt .w { font-weight: 500; font-size: 12px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+button.bk-appt .n em { font-style: normal; font-size: 12px; font-weight: 700; color: color-mix(in srgb, var(--c) 55%, var(--ink)); background: var(--card); padding: 0 6px; border-radius: 99px; flex: none; }
+button.bk-appt .w { font-weight: 500; font-size: 13.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 button.bk-appt .nt { font-style: italic; color: var(--ink-soft); }
 .bk-now { position: absolute; left: -6px; right: 0; height: 2px; background: var(--danger); z-index: 5; pointer-events: none; }
 .bk-now i { position: absolute; left: -4px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--danger); }
 .bk-slots { display: none; }
 
 /* Obvious warnings inside the booking sheet. */
-.bk-clash { border: 1.5px solid color-mix(in srgb, var(--danger) 35%, transparent); background: var(--danger-soft); color: var(--danger); border-radius: 18px; padding: 14px 16px; font-size: 14.5px; animation: pop .2s var(--ease) both; }
+.bk-clash { border: 1.5px solid color-mix(in srgb, var(--danger) 35%, transparent); background: var(--danger-soft); color: var(--danger); border-radius: 18px; padding: 14px 16px; font-size: 16px; animation: pop .2s var(--ease) both; }
 .bk-clash strong { display: flex; align-items: center; gap: 6px; font-size: 16px; margin-bottom: 2px; }
-.bk-newc { margin-top: 12px; background: var(--rose-soft); color: var(--ink-2); border-radius: 16px; padding: 12px 14px; font-size: 14px; }
-.bk-newc strong { display: flex; align-items: center; gap: 6px; font-size: 15px; margin-bottom: 2px; color: var(--rose); }
+.bk-newc { margin-top: 12px; background: var(--rose-soft); color: var(--ink-2); border-radius: 16px; padding: 12px 14px; font-size: 15.5px; }
+.bk-newc strong { display: flex; align-items: center; gap: 6px; font-size: 16px; margin-bottom: 2px; color: color-mix(in srgb, var(--rose) 60%, var(--ink)); }
 .bk-loyal { background: linear-gradient(135deg, var(--card), var(--gold-soft)); color: var(--gold-ink); border-radius: 20px; padding: 14px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 35%, transparent); }
 .bk-loyal > svg { flex: none; color: var(--gold-2); }
 .bk-foot { position: sticky; bottom: calc(-18px - env(safe-area-inset-bottom)); background: var(--paper); margin: 0 -16px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
@@ -370,9 +370,9 @@ button.bs-go { min-height: 56px; font-size: 16.5px; border-radius: 18px; backgro
 button.bs-go.clash { background: var(--danger); box-shadow: none; }
 .bk-actions > button.icon { width: 56px; min-height: 56px; border-radius: 18px; }
 .bs-sum { display: flex; align-items: center; gap: 12px; }
-.bs-when { font-weight: 700; font-size: 15px; }
+.bs-when { font-weight: 700; font-size: 16px; }
 .bs-total { font-family: var(--serif); font-size: 26px; font-weight: 450; letter-spacing: -0.02em; text-align: right; line-height: 1.1; font-variant-numeric: lining-nums; }
-.bs-total s { display: block; font-family: var(--sans); font-size: 12.5px; color: var(--ink-soft); letter-spacing: 0; }
+.bs-total s { display: block; font-family: var(--sans); font-size: 14px; color: var(--ink-soft); letter-spacing: 0; }
 .bs-dur { margin-top: 14px; padding: 10px; border-radius: 16px; background: var(--paper); }
 button.bs-toggle { width: 100%; background: none; color: var(--ink-2); border: 0; padding: 0; min-height: 40px; justify-content: flex-start; gap: 10px; font-weight: 400; }
 button.bs-toggle:hover { background: none; }

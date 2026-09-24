@@ -191,6 +191,7 @@ function HourRow({ h, days, appts, rowOf, byId, fv, onEdit }: {
 // ---------------------------------------------------------------- DAY
 
 const PX = 1.2; // px per minute
+const MIN_APPT = 34; // shortest drawn appointment, tall enough to read
 
 /** Side-by-side lanes for overlapping bookings, so a double-booking is visible, not hidden underneath. */
 function lanes(items: { id: string; s: number; e: number }[]): Map<string, { lane: number; of: number }> {
@@ -248,17 +249,24 @@ export function DayView({ focus, today, bookings, clientById, fv, setFocus, onEd
             ))}
           </div>
           <div className="track" style={{ height, backgroundSize: `100% ${60 * PX}px` }}>
-            {gaps.map(([s, e]) => (
-              <button key={`g${s}`} className="bk-gap" style={{ top: (s - OPEN_MIN) * PX + 2, height: (e - s) * PX - 4 }}
-                onClick={() => bookSlot(focus, s)} aria-label={`Book ${hhmm(s)}, ${freeText(e - s)} free until ${hhmm(e)}`}>
-                <Plus size={15} /> {hhmm(s)}<span>{freeText(e - s)} free</span>
-              </button>
-            ))}
+            {gaps.map(([s, e]) => {
+              // A short appointment is drawn taller than its minutes so it can be
+              // read, so a gap starts below whatever is drawn above it.
+              const above = items.filter((x) => x.e <= s).reduce((m, x) => Math.max(m, (x.s - OPEN_MIN) * PX + Math.max((x.e - x.s) * PX, MIN_APPT)), 0);
+              const top = Math.max((s - OPEN_MIN) * PX, above) + 2, gh = (e - OPEN_MIN) * PX - 2 - top;
+              if (gh < 12) return null;
+              return (
+                <button key={`g${s}`} className="bk-gap" style={{ top, height: gh, paddingTop: gh < 30 ? 0 : undefined, alignItems: gh < 30 ? "center" : undefined }}
+                  onClick={() => bookSlot(focus, s)} aria-label={`Book ${hhmm(s)}, ${freeText(e - s)} free until ${hhmm(e)}`}>
+                  {gh >= 22 && <><Plus size={15} /> {hhmm(s)}<span>{freeText(e - s)} free</span></>}
+                </button>
+              );
+            })}
             {items.map(({ b, s, e }) => {
               const look = bookingLook(b, fv);
               const l = laneOf.get(b.id) ?? { lane: 0, of: 1 };
               const faded = b.status === "cancelled" || b.status === "no-show";
-              const h = Math.max((e - s) * PX, 30);
+              const h = Math.max((e - s) * PX, MIN_APPT);
               return (
                 <button key={b.id} className={`bk-appt${faded ? " off" : ""}${h < 46 ? " short" : ""}`} onClick={() => onEdit(b)}
                   style={{

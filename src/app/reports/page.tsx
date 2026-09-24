@@ -95,7 +95,7 @@ export default function Reports() {
       <>
         <div className="card">
           <h2><TrendingUp size={18} />This month vs last month</h2>
-          <div className="kpis" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))", marginBottom: 0 }}>
+          <div className="kpis three" style={{ marginBottom: 0 }}>
             <Kpi label={monthLabel(today.slice(0, 7))} value={rand(thisRev)} />
             <Kpi label={monthLabel(lastMonthDay.slice(0, 7))} value={rand(prevRev)} />
             <Kpi label="Change" value={<span style={{ fontSize: 20 }}>{signedRand(delta)}</span>}
@@ -113,7 +113,7 @@ export default function Reports() {
             <div className="notice" style={{ marginBottom: 0 }}>No open days have passed in this range yet.</div>
           ) : (
             <>
-              <div className="kpis" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))", marginBottom: 8 }}>
+              <div className="kpis three" style={{ marginBottom: 8 }}>
                 <Kpi label="Booked & earned" value={`${cap.earnedPct}%`}
                   note={`${Math.floor(cap.earnedMinutes / 60)}h of ${Math.floor(cap.availableMinutes / 60)}h open, ${cap.workingDays} working days`} />
                 <Kpi label="Hours free" value={`${Math.floor((cap.availableMinutes - cap.promisedMinutes) / 60)}h`}
@@ -230,7 +230,7 @@ export default function Reports() {
         <div className="card">
           <h2><Heart size={18} />Client loyalty</h2>
           <p className="sub">All time: do clients come back, and who&apos;s slipping away right now.</p>
-          <div className="kpis" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))", marginBottom: 0 }}>
+          <div className="kpis three" style={{ marginBottom: 0 }}>
             <Kpi label="Returning" value={`${stats.returningPct}%`} note={`${stats.returning} of ${stats.visited} came back`} />
             <Kpi label="Avg. visits" value={stats.avgVisits} note="per client who's visited" />
             <Kpi label="At risk now" value={stats.atRisk} note="past their rhythm, nothing booked (Marketing → Win-Back)" />

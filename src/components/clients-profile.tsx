@@ -171,18 +171,18 @@ const PROFILE_CSS = `
 .pf-head { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding-top: 24px; position: relative; }
 .pf-head .avatar.lg { width: 76px; height: 76px; font-size: 32px; background: linear-gradient(145deg, var(--teal-soft), var(--teal-mist)); margin-bottom: 6px; }
 .pf-name { font-family: var(--serif); font-weight: 450; font-size: 26px; letter-spacing: -0.015em; margin: 0; overflow-wrap: anywhere; justify-content: center; }
-.pf-edit { position: absolute; top: 12px; right: 12px; min-height: 38px; padding: 4px 12px; font-size: 13.5px; }
+.pf-edit { position: absolute; top: 12px; right: 12px; min-height: 38px; padding: 4px 12px; font-size: 15px; }
 .pf-notes { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 6px; }
 .pf-contact { margin-top: 12px; }
 button.pf-next { width: 100%; display: flex; align-items: center; gap: 14px; text-align: left; padding: 16px; border-radius: 22px; margin-bottom: 14px; min-height: 0;
   background: radial-gradient(120% 140% at 100% 0%, var(--hero-a) 0%, var(--teal) 60%, var(--hero-c) 100%); color: #fff; box-shadow: 0 14px 30px -18px rgba(15,59,56,0.8); font-weight: 400; }
 button.pf-next .grow { display: flex; flex-direction: column; gap: 2px; }
 button.pf-next b { font-family: var(--serif); font-weight: 450; font-size: 19px; }
-button.pf-next .grow > span:last-child { font-size: 12.5px; color: rgba(255,255,255,0.75); }
+button.pf-next .grow > span:last-child { font-size: 14px; color: rgba(255,255,255,0.75); }
 .pf-next-ico { width: 44px; height: 44px; border-radius: 14px; background: rgba(255,255,255,0.12); display: grid; place-items: center; flex: none; color: var(--hero-gold); }
 .pf-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
 .pf-tiles > div { background: var(--card); border-radius: 18px; padding: 12px; box-shadow: var(--shadow-1); min-width: 0; }
-.pf-tiles span { display: block; font-size: 12px; font-weight: 650; color: var(--ink-soft); }
+.pf-tiles span { display: block; font-size: 13.5px; font-weight: 650; color: var(--ink-soft); }
 .pf-tiles b { display: block; font-family: var(--serif); font-weight: 450; font-size: 20px; overflow-wrap: anywhere; line-height: 1.2; margin-top: 2px; }
 .pf-stamps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
 .pf-stamps span { aspect-ratio: 1; max-height: 56px; border-radius: 50%; display: grid; place-items: center; border: 2px dashed var(--line-2); color: var(--ink-faint); justify-self: center; width: 100%; max-width: 56px; }

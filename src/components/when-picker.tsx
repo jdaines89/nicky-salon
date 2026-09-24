@@ -278,20 +278,20 @@ export function DurationStepper({ value, onChange, auto, onAuto, autoValue }: {
 export const WHEN_CSS = `
 .wp-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .wp-month { font-family: var(--serif); font-size: 19px; font-weight: 450; letter-spacing: -0.01em; }
-.wp-sel { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--teal-2); background: var(--teal-soft); padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+.wp-sel { margin-left: auto; font-size: 14.5px; font-weight: 700; color: var(--teal-2); background: var(--teal-soft); padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
 .wp-strip { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; padding: 2px 2px 6px; margin: 0 -14px; padding-left: 14px; padding-right: 14px; }
 .wp-strip::-webkit-scrollbar { display: none; }
 button.wp-day { flex: none; scroll-snap-align: center; width: 58px; min-height: 76px; padding: 8px 0 7px; border-radius: 18px; flex-direction: column; gap: 2px;
   background: var(--paper); color: var(--ink); border: 1.5px solid transparent; }
 button.wp-day:hover { background: var(--teal-mist); }
-button.wp-day .dow { font-size: 11.5px; font-weight: 700; color: var(--ink-soft); letter-spacing: 0.02em; }
+button.wp-day .dow { font-size: 13px; font-weight: 700; color: var(--ink-soft); letter-spacing: 0.02em; }
 button.wp-day .dn { font-family: var(--serif); font-size: 23px; font-weight: 450; line-height: 1.05; font-variant-numeric: lining-nums; }
 button.wp-day .dots { display: flex; gap: 3px; height: 6px; align-items: center; }
 button.wp-day .dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--teal-3); }
 button.wp-day .dots i.free { background: transparent; border: 1px solid var(--ink-faint); }
 button.wp-day.today .dow { color: var(--gold-2); }
 button.wp-day.past { opacity: 0.55; }
-button.wp-day.sun .dow { color: var(--rose); }
+button.wp-day.sun .dow { color: color-mix(in srgb, var(--rose) 60%, var(--ink)); }
 button.wp-day.on { background: var(--teal); color: var(--on-accent); border-color: var(--teal); box-shadow: 0 8px 18px -8px rgba(15,59,56,0.7); }
 button.wp-day.on .dow { color: color-mix(in srgb, var(--on-accent) 75%, transparent); }
 button.wp-day.on .dots i { background: var(--gold); }
@@ -300,7 +300,7 @@ button.wp-day.on .dots i.free { border-color: color-mix(in srgb, var(--on-accent
 .wp-cal { animation: pop .18s var(--ease) both; }
 .wp-calnav { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .wp-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
-.wp-grid .h { text-align: center; font-size: 11px; font-weight: 700; color: var(--ink-soft); padding: 4px 0; }
+.wp-grid .h { text-align: center; font-size: 12.5px; font-weight: 700; color: var(--ink-soft); padding: 4px 0; }
 .wp-grid button.c { min-height: 44px; padding: 0; border-radius: 14px; background: none; color: var(--ink); border: 0; font-weight: 600; position: relative; flex-direction: column; gap: 0; }
 .wp-grid button.c:hover { background: var(--teal-mist); }
 .wp-grid button.c i { width: 4px; height: 4px; border-radius: 50%; background: var(--teal-3); position: absolute; bottom: 6px; }
@@ -314,33 +314,33 @@ button.wp-day.on .dots i.free { border-color: color-mix(in srgb, var(--on-accent
 .wp-glance .busy { position: absolute; top: 0; bottom: 0; background: var(--busy); border-radius: 3px; }
 .wp-glance .me { position: absolute; top: 0; bottom: 0; background: var(--gold); border-radius: 3px; box-shadow: 0 0 0 2px var(--card); transition: left .25s var(--ease), width .25s var(--ease); }
 .wp-glance .me.clash { background: var(--danger); }
-.wp-glance .ticks { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--ink-soft); margin-top: 4px; font-weight: 600; }
+.wp-glance .ticks { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-soft); margin-top: 4px; font-weight: 600; }
 
 .ts { margin-top: 12px; }
 .ts-part { margin-bottom: 12px; }
-.ts-label { display: flex; align-items: baseline; gap: 8px; font-size: 12px; font-weight: 700; color: var(--ink-2); margin: 0 0 8px; letter-spacing: 0.02em; }
-.ts-label span { font-weight: 600; color: var(--ink-soft); font-size: 11.5px; }
+.ts-label { display: flex; align-items: baseline; gap: 8px; font-size: 13.5px; font-weight: 700; color: var(--ink-2); margin: 0 0 8px; letter-spacing: 0.02em; }
+.ts-label span { font-weight: 600; color: var(--ink-soft); font-size: 13px; }
 .ts-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 @media (min-width: 480px) { .ts-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 button.ts-slot { position: relative; min-height: 48px; padding: 0 2px; border-radius: 14px; background: var(--paper); color: var(--ink); border: 1.5px solid transparent;
   font-size: 15.5px; font-weight: 650; font-variant-numeric: tabular-nums; min-width: 0; gap: 1px; }
-button.ts-slot small { font-size: 11px; font-weight: 600; color: var(--ink-soft); }
+button.ts-slot small { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
 button.ts-slot:hover { background: var(--teal-mist); border-color: var(--teal-soft); }
 button.ts-slot.snug { background: var(--gold-soft); }
 button.ts-slot .spark { position: absolute; top: 5px; right: 6px; color: var(--gold-2); }
 button.ts-slot.on { background: var(--teal); color: var(--on-accent); border-color: var(--teal); box-shadow: 0 8px 18px -8px rgba(15,59,56,0.7); }
 button.ts-slot.on small, button.ts-slot.on .spark { color: color-mix(in srgb, var(--on-accent) 80%, transparent); }
-.ts-none { margin: 4px 0 12px; padding: 14px; border-radius: 14px; background: var(--paper); color: var(--ink-2); font-size: 14px; text-align: center; }
+.ts-none { margin: 4px 0 12px; padding: 14px; border-radius: 14px; background: var(--paper); color: var(--ink-2); font-size: 15.5px; text-align: center; }
 .ts-foot { display: flex; align-items: center; gap: 8px; min-height: 32px; }
 .cc { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line-2); animation: pop .18s var(--ease) both; }
 .cc-grid { display: grid; gap: 6px; margin-bottom: 12px; }
 .cc-grid.h { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .cc-grid.m { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-.cc-grid button.ts-slot { min-height: 44px; font-size: 15px; }
+.cc-grid button.ts-slot { min-height: 44px; font-size: 16px; }
 
 .dur { display: flex; align-items: center; gap: 10px; }
 .dur-v { flex: 1; text-align: center; display: flex; flex-direction: column; line-height: 1.2; }
 .dur-v b { font-family: var(--serif); font-size: 21px; font-weight: 450; }
-.dur-v span, .dur-v button { font-size: 12px; color: var(--ink-soft); }
-.dur-v button.linkish { color: var(--teal-2); font-size: 12.5px; align-self: center; }
+.dur-v span, .dur-v button { font-size: 13.5px; color: var(--ink-soft); }
+.dur-v button.linkish { color: var(--teal-2); font-size: 14px; align-self: center; }
 `;

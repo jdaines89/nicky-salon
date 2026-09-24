@@ -21,7 +21,7 @@ export function ReportsBarList({ rows }: { rows: BarRow[] }) {
       {rows.map((r) => (
         <div key={r.key}>
           <div className="row" style={{ flexWrap: "nowrap", gap: 8, alignItems: "baseline" }}>
-            <span className="grow" style={{ fontWeight: 600, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span className="grow" style={{ fontWeight: 600, fontSize: 15.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {r.label}
             </span>
             <span className="small muted" style={{ fontVariantNumeric: "tabular-nums", textAlign: "right" }}>{r.text}</span>
@@ -47,13 +47,13 @@ export function ReportsColumns({ points, format, highlight }: {
       style={{ display: "grid", gridTemplateColumns: `repeat(${points.length}, minmax(0, 1fr))`, gap: 8, alignItems: "end", height: 170 }}>
       {points.map((p) => (
         <div key={p.key} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", height: "100%", minWidth: 0 }}>
-          <span style={{ fontSize: 11.5, fontVariantNumeric: "tabular-nums", color: "var(--ink-soft)", whiteSpace: "nowrap" }}>{format(p.value)}</span>
+          <span style={{ fontSize: 13, fontVariantNumeric: "tabular-nums", color: "var(--ink-soft)", whiteSpace: "nowrap" }}>{format(p.value)}</span>
           <div style={{
             width: "100%", maxWidth: 48, marginTop: 4, borderRadius: "6px 6px 0 0",
             height: `${(p.value / max) * 120}px`, minHeight: p.value ? 3 : 1,
             background: p.key === highlight ? "var(--teal)" : "var(--gold)",
           }} />
-          <span style={{ fontSize: 11.5, marginTop: 4, whiteSpace: "nowrap", fontWeight: p.key === highlight ? 700 : 400 }}>{p.label}</span>
+          <span style={{ fontSize: 13, marginTop: 4, whiteSpace: "nowrap", fontWeight: p.key === highlight ? 700 : 400 }}>{p.label}</span>
         </div>
       ))}
     </div>
