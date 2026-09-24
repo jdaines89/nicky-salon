@@ -61,6 +61,11 @@ export function DayStrip({ value, onChange, today, bookings, excludeId, pastDays
       <div className="wp-head">
         <span className="wp-month">{monthName(value)} <span className="muted">{value.slice(0, 4)}</span></span>
         <span className="wp-sel">{label}</span>
+        {/* A laptop mouse can't swipe the strip sideways, so it gets arrows. */}
+        {!calOpen && <>
+          <button type="button" className="ghost icon pill wp-arrow" aria-label="Earlier days" onClick={() => scroller.current?.scrollBy({ left: -scroller.current.clientWidth * 0.8, behavior: "smooth" })}><ChevronLeft size={18} /></button>
+          <button type="button" className="ghost icon pill wp-arrow" aria-label="Later days" onClick={() => scroller.current?.scrollBy({ left: scroller.current.clientWidth * 0.8, behavior: "smooth" })}><ChevronRight size={18} /></button>
+        </>}
         <button type="button" className="ghost icon pill" style={{ width: 40, minHeight: 40 }} aria-label="Pick from a calendar" aria-expanded={calOpen}
           onClick={() => setCalOpen(!calOpen)}><CalendarDays size={18} /></button>
       </div>
@@ -281,6 +286,8 @@ export const WHEN_CSS = `
 .wp-sel { margin-left: auto; font-size: 14.5px; font-weight: 700; color: var(--teal-2); background: var(--teal-soft); padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
 .wp-strip { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; padding: 2px 2px 6px; margin: 0 -14px; padding-left: 14px; padding-right: 14px; }
 .wp-strip::-webkit-scrollbar { display: none; }
+button.wp-arrow { display: none; width: 40px; min-height: 40px; padding: 0; }
+@media (hover: hover) and (pointer: fine) { button.wp-arrow { display: inline-flex; } }
 button.wp-day { flex: none; scroll-snap-align: center; width: 58px; min-height: 76px; padding: 8px 0 7px; border-radius: 18px; flex-direction: column; gap: 2px;
   background: var(--paper); color: var(--ink); border: 1.5px solid transparent; }
 button.wp-day:hover { background: var(--teal-mist); }
