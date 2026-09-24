@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Check, Package, Pencil } from "lucide-react";
 import { useSalon } from "@/components/data";
 import { rand, Sheet, useToast } from "@/components/ui";
 import { ServicesPackageBuilder } from "@/components/services-package-builder";
@@ -24,10 +25,8 @@ function ServiceRow({ s, editing, onEdit }: { s: Service; editing: boolean; onEd
       <span className="small muted" style={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
         {s.duration_minutes} min
       </span>
-      <span style={{ fontFamily: "var(--serif)", fontWeight: 600, minWidth: 64, textAlign: "right", whiteSpace: "nowrap" }}>
-        R{Math.round(Number(s.price))}
-      </span>
-      {editing && <span className="muted" aria-hidden>✎</span>}
+      <span className="price" style={{ minWidth: 58, textAlign: "right" }}>{rand(Number(s.price))}</span>
+      {editing && <Pencil size={16} className="chev" aria-hidden />}
     </>
   );
   if (!editing) return <div className="item">{body}</div>;
@@ -59,10 +58,10 @@ export default function Services() {
 
   return (
     <>
-      <div className="row" style={{ alignItems: "flex-start" }}>
-        <h1 className="grow">Services &amp; Pricing</h1>
-        <button className={editing ? "" : "ghost"} onClick={() => setEditing(!editing)} style={{ marginTop: 6 }}>
-          {editing ? "Done editing" : "Edit services"}
+      <div className="page-head" style={{ alignItems: "center" }}>
+        <h1 className="grow">Services</h1>
+        <button className={`pill ${editing ? "" : "ghost"}`} onClick={() => setEditing(!editing)} style={{ marginBottom: 0 }}>
+          {editing ? <><Check size={17} />Done</> : <><Pencil size={16} />Edit</>}
         </button>
       </div>
       <p className="sub">
@@ -75,10 +74,10 @@ export default function Services() {
 
       {/* Packages pinned first: what a client peeking at the screen, or Nicky quoting, sees first. */}
       <div className="card">
-        <h2>📦 Package deals</h2>
+        <h2><Package size={18} />Package deals</h2>
         <p className="sub">Bundle services into one price. Packages show up in the booking form like any service.</p>
         {packages.length ? (
-          <div className="list">
+          <div className="list nw">
             {packages.map((s) => <ServiceRow key={s.id} s={s} editing={editing} onEdit={setEdit} />)}
           </div>
         ) : (
@@ -91,7 +90,7 @@ export default function Services() {
             <summary style={{ cursor: "pointer", fontWeight: 600, minHeight: 44, display: "flex", alignItems: "center" }}>
               Build a package
             </summary>
-            <ServicesPackageBuilder regular={regular} onCreated={async (name) => { await reload(); say(`📦 ${name} added. It's now bookable.`); }} onError={(m) => say(m)} />
+            <ServicesPackageBuilder regular={regular} onCreated={async (name) => { await reload(); say(`${name} added. It's now bookable.`); }} onError={(m) => say(m)} />
           </details>
         )}
       </div>
@@ -100,7 +99,7 @@ export default function Services() {
         {categories.map((cat) => (
           <div key={cat} className="card">
             <h2>{cat}</h2>
-            <div className="list">
+            <div className="list nw">
               {grouped.get(cat)!.map((s) => <ServiceRow key={s.id} s={s} editing={editing} onEdit={setEdit} />)}
             </div>
           </div>

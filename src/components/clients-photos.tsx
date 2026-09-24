@@ -1,5 +1,6 @@
 "use client";
 
+import { Camera, Image as ImageIcon, MoreHorizontal } from "lucide-react";
 /**
  * Nail photos on a client profile: "what did we have last time?" is the
  * question she is asked most at the chair, and for nail work a shade name three
@@ -22,7 +23,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Sheet } from "@/components/ui";
 import { addClientPhoto, deleteClientPhoto, getClientPhotos, photoUrls } from "@/lib/db";
-import { bookingTitle, fmtDayMonth } from "@/lib/salon";
+import { bookingTitle, fmtDayMonShort, fmtDayMonth } from "@/lib/salon";
 import type { BookingWithServices, ClientPhoto } from "@/lib/types";
 
 // Bigger than any phone photo, small enough that a mis-picked video is refused
@@ -180,7 +181,7 @@ export function ClientPhotos({ clientId, bookings, today, say }: {
     <div className="card">
       <div className="row">
         <h2 className="grow" style={{ margin: 0 }}>Nail photos</h2>
-        {state === "ready" && <button className="gold" onClick={() => setAdding(true)}>＋ Add photo</button>}
+        {state === "ready" && <button className="gold" onClick={() => setAdding(true)}><Camera size={17} />Add photo</button>}
       </div>
 
       {state === "loading" && <p className="small muted">Loading photos…</p>}
@@ -222,12 +223,15 @@ export function ClientPhotos({ clientId, bookings, today, say }: {
                   ) : (
                     <div className="small muted" style={{ aspectRatio: "1 / 1", display: "grid", placeItems: "center", background: "var(--teal-soft)", borderRadius: 10 }}>couldn&apos;t load</div>
                   )}
-                  <div className="row" style={{ flexWrap: "nowrap", gap: 2, alignItems: "flex-start" }}>
-                    <div className="grow small muted" style={{ lineHeight: 1.3, paddingTop: 4, overflowWrap: "anywhere" }}>
-                      {captionLine(p, bk ? bookingTitle(bk) : null)}
+                  <div style={{ paddingTop: 6, lineHeight: 1.3 }}>
+                    <div className="row" style={{ flexWrap: "nowrap", gap: 0, alignItems: "center" }}>
+                      <b className="grow" style={{ fontSize: 14, whiteSpace: "nowrap" }}>{p.created_at ? fmtDayMonShort(p.created_at.slice(0, 10)) : "Photo"}</b>
+                      <button className="ghost" aria-label="Photo options" onClick={() => setMenuFor(p)}
+                        style={{ minHeight: 32, width: 36, padding: 0, border: 0, background: "none", color: "var(--ink-soft)" }}><MoreHorizontal size={18} /></button>
                     </div>
-                    <button className="ghost" aria-label="Photo options" onClick={() => setMenuFor(p)}
-                      style={{ minHeight: 36, padding: "2px 8px", border: 0, background: "none", color: "var(--ink-soft)" }}>⋯</button>
+                    <div className="small muted" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                      {p.caption || (bk ? bookingTitle(bk) : "")}
+                    </div>
                   </div>
                 </div>
               );
@@ -326,8 +330,8 @@ function AddPhotoSheet({ clientId, bookings, today, onClose, onSaved }: {
       <div className="stack">
         <p className="small muted" style={{ margin: 0 }}>Take one now, or pick a picture you already took.</p>
         <div className="fields2">
-          <button type="button" onClick={() => cameraRef.current?.click()} disabled={working}>📷 Camera</button>
-          <button type="button" className="ghost" onClick={() => pickRef.current?.click()} disabled={working}>🖼️ Choose photo</button>
+          <button type="button" onClick={() => cameraRef.current?.click()} disabled={working}><Camera size={17} />Camera</button>
+          <button type="button" className="ghost" onClick={() => pickRef.current?.click()} disabled={working}><ImageIcon size={17} />Choose photo</button>
         </div>
         <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={onFile} />
         <input ref={pickRef} type="file" accept="image/*" hidden onChange={onFile} />

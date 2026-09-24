@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSalon } from "@/components/data";
@@ -8,6 +9,7 @@ import { BookingSheet, type NewBookingDraft } from "@/components/bookings-dialog
 import { RecurringSheet, SeriesList } from "@/components/bookings-recurring";
 import { BOOKINGS_CSS, hhmm, useFirstVisits } from "@/components/bookings-shared";
 import { DayView, MonthView, WeekView } from "@/components/bookings-views";
+import { WHEN_CSS } from "@/components/when-picker";
 import type { BookingWithServices } from "@/lib/types";
 
 type View = "Month" | "Week" | "Day" | "Recurring";
@@ -37,7 +39,7 @@ function Bookings() {
 
   // One focus date shared by Month, Week and Day, so switching views never
   // snaps back to today while she's browsing another month.
-  const [view, setView] = useState<View>("Month");
+  const [view, setView] = useState<View>("Day");
   const [focus, setFocus] = useState(today);
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const counter = useRef(0);
@@ -49,12 +51,15 @@ function Bookings() {
   // "Book next visit" handoff from a client profile (?new=1&client=…).
   useEffect(() => {
     const qs = params.toString();
-    if (!qs || handled.current === qs) return;
+    // Clearing on an empty query lets the same link (the Book button) fire again.
+    if (!qs) { handled.current = null; return; }
+    if (handled.current === qs) return;
     handled.current = qs;
     const day = params.get("day");
     const openId = params.get("open");
     if (params.get("new") === "1") {
-      const date = isDate(params.get("date")) ? params.get("date")! : isDate(day) ? day : today;
+      // The Book button in the bottom bar means "on the day I'm looking at".
+      const date = isDate(params.get("date")) ? params.get("date")! : isDate(day) ? day : view === "Day" ? focus : today;
       const t = params.get("time");
       const dur = parseInt(params.get("duration") || "", 10);
       const svc = (params.get("services") || "").split(",").map((s) => s.trim())
@@ -87,20 +92,19 @@ function Bookings() {
 
   return (
     <>
-      <style>{BOOKINGS_CSS}</style>
-      <h1>Bookings</h1>
-      <p className="sub">Your day, week and month</p>
+      <style>{BOOKINGS_CSS + WHEN_CSS}</style>
+      <h1>Diary</h1>
 
       <div className="bk-top">
         <div className="bk-segfull" style={{ flex: "1 1 320px", minWidth: 0 }}>
-          <Seg value={view} options={["Month", "Week", "Day", "Recurring"] as const} onChange={setView} />
+          <Seg value={view} options={["Day", "Week", "Month", "Recurring"] as const} onChange={setView} />
         </div>
         {/* In Day view "new booking" almost always means on the day she's looking at. */}
-        <button className="gold" style={{ flex: "1 1 auto" }} onClick={() => newOn(view === "Day" ? focus : today)}>＋ New booking</button>
+        <button className="gold pill bk-newbtn" onClick={() => newOn(view === "Day" ? focus : today)}><Plus size={18} />New booking</button>
       </div>
 
       {view === "Month" && (
-        <MonthView {...shared} openWeek={(d) => { setFocus(d); setView("Week"); }} />
+        <MonthView {...shared} openWeek={(d) => { setFocus(d); setView("Day"); }} />
       )}
       {view === "Week" && (
         <WeekView {...shared} openDay={(d) => { setFocus(d); setView("Day"); }} addOn={(d) => newOn(d)} />

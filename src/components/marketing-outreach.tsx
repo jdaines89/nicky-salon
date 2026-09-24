@@ -1,5 +1,6 @@
 "use client";
 
+import { Pencil } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Contact } from "@/components/ui";
@@ -22,7 +23,7 @@ export function MarketingTemplateEditor({ value, onChange, onReset, placeholders
   return (
     <details className="card tight">
       <summary style={{ cursor: "pointer", fontWeight: 600, minHeight: 40, display: "flex", alignItems: "center" }}>
-        ✏️ Edit the message
+        <Pencil size={16} style={{ verticalAlign: -3, marginRight: 6, color: "var(--gold-2)" }} />Edit the message
       </summary>
       <div className="stack" style={{ marginTop: 8 }}>
         <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={4} aria-label="Message" />

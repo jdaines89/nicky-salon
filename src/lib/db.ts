@@ -182,6 +182,12 @@ export async function getClientPhotos(clientId: string): Promise<ClientPhoto[]> 
     .eq("client_id", clientId).order("created_at", { ascending: false }).order("id"));
 }
 
+/** Every client's photos, newest first: the Lookbook. */
+export async function getAllPhotos(): Promise<ClientPhoto[]> {
+  return fetchAll<ClientPhoto>(() => supabase.from("client_photos").select("*")
+    .order("created_at", { ascending: false }).order("id"));
+}
+
 /**
  * Short-lived signed URLs: these are photographs of identifiable people, so the
  * bucket is private and a copied link dies within the hour.

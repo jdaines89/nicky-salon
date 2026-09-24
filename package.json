@@ -11,8 +11,12 @@
     "db:test": "sh supabase/tests/run.sh"
   },
   "dependencies": {
+    "@fontsource-variable/bodoni-moda": "^5.3.0",
+    "@fontsource-variable/fraunces": "^5.3.0",
+    "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
     "@supabase/supabase-js": "^2.117.0",
     "exceljs": "^4.4.0",
+    "lucide-react": "^1.48.0",
     "next": "^15.5.4",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"

@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ClientPhotos } from "@/components/clients-photos";
-import { Contact, Kpi } from "@/components/ui";
+import { CalendarPlus, ChevronRight, Gift, History, PartyPopper, Pencil, Sparkles } from "lucide-react";
+import { Contact } from "@/components/ui";
 import { cadence, reliability, suggestNextVisit } from "@/lib/insights";
 import {
   clientHasUpcoming, clientInitial, clientVisits, completedVisitCount, firstName, fmtDayMonth,
@@ -64,70 +65,68 @@ export function ClientProfile({ client, bookings, today, onEdit, say }: {
 
   const shown = allHistory ? visits : visits.slice(0, HISTORY_PREVIEW);
 
+  const stamps = Math.round((pct / 100) * 5);
   return (
     <>
-      <div className="card">
-        <div className="row" style={{ flexWrap: "nowrap", alignItems: "flex-start" }}>
-          <span className="avatar" style={{ width: 48, height: 48, fontSize: 19 }}>{clientInitial(client.name)}</span>
-          <div className="grow">
-            <h2 style={{ fontFamily: "var(--serif)", fontWeight: 500, fontSize: 22, margin: 0, overflowWrap: "anywhere" }}>{client.name}</h2>
-            <div className="small muted">{client.phone || "No number"} · Birthday {birthdayLabel(client.birthday)}</div>
-          </div>
-          <button className="ghost" onClick={onEdit}>Edit</button>
-        </div>
-
-        <div style={{ marginTop: 12 }}>
-          <Contact phone={client.phone} message={`Hi ${firstName(client.name)}! It's Nicky from Beauty & Nails 💅 `} />
-        </div>
-
-        {nxt && (
-          <div style={{ marginTop: 12 }}>
-            <button className="gold" style={{ width: "100%" }} onClick={bookNext}>
-              📅 Book next visit — {fmtWeekdayDayMonth(nxt.date)} at {hhmm(nxt.startMin)}
-            </button>
-            <div className="small muted" style={{ marginTop: 4 }}>
-              Comes in about every {nxt.gapDays} days{usual} · nothing booked yet. Opens the booking already
-              filled in — change anything before saving.
-            </div>
-          </div>
-        )}
+      <style>{PROFILE_CSS}</style>
+      <div className="card pf-head">
+        <button className="ghost pill pf-edit" onClick={onEdit}><Pencil size={15} />Edit</button>
+        <span className="avatar lg">{clientInitial(client.name)}</span>
+        <h2 className="pf-name">{client.name}</h2>
+        <div className="small muted">{client.phone || "No number on file"}{client.birthday ? ` · Birthday ${birthdayLabel(client.birthday)}` : ""}</div>
+        {notes.length > 0 && <div className="pf-notes">{notes.map((n) => <span key={n} className="badge muted">{n}</span>)}</div>}
+        {client.phone && <div className="pf-contact"><Contact phone={client.phone} message={`Hi ${firstName(client.name)}! It's Nicky from Beauty & Nails 💅 `} /></div>}
       </div>
 
-      <div className="kpis" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
-        <Kpi label="Shape" value={<span style={{ fontSize: 18, overflowWrap: "anywhere" }}>{client.shape || "—"}</span>} />
-        <Kpi label="Shade" value={<span style={{ fontSize: 18, overflowWrap: "anywhere" }}>{client.shade || "—"}</span>} />
-        <Kpi label="Visits" value={visitsCount} note="completed" />
+      {nxt && (
+        <button className="pf-next" onClick={bookNext}>
+          <span className="pf-next-ico"><CalendarPlus size={22} /></span>
+          <span className="grow">
+            <span className="eyebrow" style={{ color: "var(--hero-gold)" }}>Book her next visit</span>
+            <b>{fmtWeekdayDayMonth(nxt.date)} at {hhmm(nxt.startMin)}</b>
+            <span>Every ~{nxt.gapDays} days{usual}. Opens filled in, change anything first.</span>
+          </span>
+          <ChevronRight size={20} />
+        </button>
+      )}
+
+      <div className="pf-tiles">
+        <div><span>Shape</span><b>{client.shape || "—"}</b></div>
+        <div><span>Shade</span><b>{client.shade || "—"}</b></div>
+        <div><span>Visits</span><b>{visitsCount}</b></div>
       </div>
 
       <div className="card">
-        <h3>Loyalty progress</h3>
-        <div className="bar" role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}>
-          <span style={{ width: `${pct}%` }} />
+        <div className="card-head"><h2><Gift size={18} />Loyalty card</h2>
+          {kind === "progress" && <span className="small muted">{toNext} to go</span>}</div>
+        <div className="pf-stamps" role="img" aria-label={`${stamps} of 5 stamps`}>
+          {Array.from({ length: 5 }, (_, i) => (
+            <span key={i} className={i < stamps ? "on" : ""}>{i === 4 ? <Gift size={18} /> : <Sparkles size={16} />}</span>
+          ))}
         </div>
         {kind === "none" && (
           <p className="small muted" style={{ marginBottom: 0 }}>
-            No completed visits yet — loyalty tracking starts once a booking is confirmed and the date has passed.
+            Stamps start once a confirmed booking&apos;s date has passed.
           </p>
         )}
         {kind === "due" && (
-          <div className="notice" style={{ margin: "10px 0 0" }}>
-            🎉 Visit {visitsCount} complete — <b>20% off is due on her next visit!</b>
+          <div className="notice warn" style={{ margin: "12px 0 0" }}>
+            <PartyPopper size={18} /><span>Visit {visitsCount} done. <b>Her next visit is 20% off.</b></span>
           </div>
         )}
         {kind === "progress" && (
           <p className="small muted" style={{ marginBottom: 0 }}>
-            {toNext} more visit{toNext !== 1 ? "s" : ""} until 20% off (every 5th visit).
+            Every 5th visit earns 20% off the next. {toNext} more visit{toNext !== 1 ? "s" : ""} to go.
           </p>
         )}
-        {notes.length > 0 && <p className="small muted" style={{ marginBottom: 0 }}>{notes.join(" · ")}</p>}
       </div>
 
       <ClientPhotos clientId={client.id} bookings={bookings} today={today} say={say} />
 
       <div className="card">
-        <h2>Visit history</h2>
+        <div className="card-head"><h2><History size={18} />Visit history</h2></div>
         {!visits.length && <p className="muted" style={{ margin: 0 }}>No visits on file yet.</p>}
-        <div className="list">
+        <div className="list nw">
           {shown.map((v, i) => {
             // Estimated visits carry a made-up date by construction, so never
             // show one as though it were a real appointment.
@@ -167,3 +166,25 @@ export function ClientProfile({ client, bookings, today, onEdit, say }: {
     </>
   );
 }
+
+const PROFILE_CSS = `
+.pf-head { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding-top: 24px; position: relative; }
+.pf-head .avatar.lg { width: 76px; height: 76px; font-size: 32px; background: linear-gradient(145deg, var(--teal-soft), var(--teal-mist)); margin-bottom: 6px; }
+.pf-name { font-family: var(--serif); font-weight: 450; font-size: 26px; letter-spacing: -0.015em; margin: 0; overflow-wrap: anywhere; justify-content: center; }
+.pf-edit { position: absolute; top: 12px; right: 12px; min-height: 38px; padding: 4px 12px; font-size: 15px; }
+.pf-notes { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 6px; }
+.pf-contact { margin-top: 12px; }
+button.pf-next { width: 100%; display: flex; align-items: center; gap: 14px; text-align: left; padding: 16px; border-radius: 22px; margin-bottom: 14px; min-height: 0;
+  background: radial-gradient(120% 140% at 100% 0%, var(--hero-a) 0%, var(--teal) 60%, var(--hero-c) 100%); color: #fff; box-shadow: 0 14px 30px -18px rgba(15,59,56,0.8); font-weight: 400; }
+button.pf-next .grow { display: flex; flex-direction: column; gap: 2px; }
+button.pf-next b { font-family: var(--serif); font-weight: 450; font-size: 19px; }
+button.pf-next .grow > span:last-child { font-size: 14px; color: rgba(255,255,255,0.75); }
+.pf-next-ico { width: 44px; height: 44px; border-radius: 14px; background: rgba(255,255,255,0.12); display: grid; place-items: center; flex: none; color: var(--hero-gold); }
+.pf-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+.pf-tiles > div { background: var(--card); border-radius: 18px; padding: 12px; box-shadow: var(--shadow-1); min-width: 0; }
+.pf-tiles span { display: block; font-size: 13.5px; font-weight: 650; color: var(--ink-soft); }
+.pf-tiles b { display: block; font-family: var(--serif); font-weight: 450; font-size: 20px; overflow-wrap: anywhere; line-height: 1.2; margin-top: 2px; }
+.pf-stamps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.pf-stamps span { aspect-ratio: 1; max-height: 56px; border-radius: 50%; display: grid; place-items: center; border: 2px dashed var(--line-2); color: var(--ink-faint); justify-self: center; width: 100%; max-width: 56px; }
+.pf-stamps span.on { border: 0; background: linear-gradient(145deg, var(--gold-hi), var(--gold-2)); color: var(--on-gold); box-shadow: 0 6px 14px -8px rgba(166,122,63,0.9); animation: pop .3s var(--ease) both; }
+`;

@@ -1,5 +1,6 @@
 "use client";
 
+import { Armchair, BarChart3, CalendarDays, Flame, Heart, Star, Timer, TrendingUp, Wallet } from "lucide-react";
 import { useState } from "react";
 import { useSalon } from "@/components/data";
 import { Kpi, rand, Seg, useToast } from "@/components/ui";
@@ -93,8 +94,8 @@ export default function Reports() {
     body = (
       <>
         <div className="card">
-          <h2>This month vs last month</h2>
-          <div className="kpis" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))", marginBottom: 0 }}>
+          <h2><TrendingUp size={18} />This month vs last month</h2>
+          <div className="kpis three" style={{ marginBottom: 0 }}>
             <Kpi label={monthLabel(today.slice(0, 7))} value={rand(thisRev)} />
             <Kpi label={monthLabel(lastMonthDay.slice(0, 7))} value={rand(prevRev)} />
             <Kpi label="Change" value={<span style={{ fontSize: 20 }}>{signedRand(delta)}</span>}
@@ -106,13 +107,13 @@ export default function Reports() {
         {/* Occupancy decides where effort is worth spending: prices are the employer's,
             so revenue is available hours x occupancy x what fills the hour. */}
         <div className="card">
-          <h2>How full the chair was</h2>
+          <h2><Armchair size={18} />How full the chair was</h2>
           <p className="sub">Of the hours you were open in this range. The number that says whether to chase bookings or change what fills them.</p>
           {!cap.availableMinutes ? (
             <div className="notice" style={{ marginBottom: 0 }}>No open days have passed in this range yet.</div>
           ) : (
             <>
-              <div className="kpis" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))", marginBottom: 8 }}>
+              <div className="kpis three" style={{ marginBottom: 8 }}>
                 <Kpi label="Booked & earned" value={`${cap.earnedPct}%`}
                   note={`${Math.floor(cap.earnedMinutes / 60)}h of ${Math.floor(cap.availableMinutes / 60)}h open, ${cap.workingDays} working days`} />
                 <Kpi label="Hours free" value={`${Math.floor((cap.availableMinutes - cap.promisedMinutes) / 60)}h`}
@@ -130,7 +131,7 @@ export default function Reports() {
         </div>
 
         <div className="card">
-          <h2>Revenue by month</h2>
+          <h2><BarChart3 size={18} />Revenue by month</h2>
           <p className="sub">Confirmed revenue, every month you&apos;ve had bookings.</p>
           {!months.length ? <div className="notice" style={{ marginBottom: 0 }}>No confirmed bookings yet.</div> : (
             <ReportsBarList rows={months.map(([ym, v]) => ({
@@ -155,13 +156,13 @@ export default function Reports() {
     body = (
       <>
         <div className="card">
-          <h2>Weekly revenue</h2>
+          <h2><Wallet size={18} />Weekly revenue</h2>
           <p className="sub">Confirmed revenue, last week through 3 weeks ahead. This week in teal.</p>
           <ReportsColumns highlight={monday} format={(v) => `R${Math.round(v).toLocaleString("en-ZA").replace(/\s/g, " ")}`}
             points={weeks.map((w) => ({ key: w.key, label: w.label, value: w.rev }))} />
         </div>
         <div className="card">
-          <h2>Weekly bookings</h2>
+          <h2><CalendarDays size={18} />Weekly bookings</h2>
           <p className="sub">Volume: confirmed, pending and no-show (cancelled excluded).</p>
           <ReportsColumns highlight={monday} format={(v) => String(v)}
             points={weeks.map((w) => ({ key: w.key, label: w.label, value: w.count }))} />
@@ -188,7 +189,7 @@ export default function Reports() {
     body = (
       <>
         <div className="card">
-          <h2>Top services</h2>
+          <h2><Star size={18} />Top services</h2>
           <p className="sub">By revenue, within the range above: what&apos;s actually earning.</p>
           {!ranked.length ? <div className="notice" style={{ marginBottom: 0 }}>No confirmed bookings in this range yet.</div> : (
             <ReportsBarList rows={ranked.map(([name, v]) => ({
@@ -197,7 +198,7 @@ export default function Reports() {
           )}
         </div>
         <div className="card">
-          <h2>Earning per hour</h2>
+          <h2><Timer size={18} />Earning per hour</h2>
           <p className="sub">What an hour in the chair is worth: the number to promote on.</p>
           {!listed.length ? <div className="notice" style={{ marginBottom: 0 }}>Add durations to your services to see this.</div> : (
             <>
@@ -227,16 +228,16 @@ export default function Reports() {
     body = (
       <>
         <div className="card">
-          <h2>Client loyalty</h2>
+          <h2><Heart size={18} />Client loyalty</h2>
           <p className="sub">All time: do clients come back, and who&apos;s slipping away right now.</p>
-          <div className="kpis" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))", marginBottom: 0 }}>
+          <div className="kpis three" style={{ marginBottom: 0 }}>
             <Kpi label="Returning" value={`${stats.returningPct}%`} note={`${stats.returning} of ${stats.visited} came back`} />
             <Kpi label="Avg. visits" value={stats.avgVisits} note="per client who's visited" />
             <Kpi label="At risk now" value={stats.atRisk} note="past their rhythm, nothing booked (Marketing → Win-Back)" />
           </div>
         </div>
         <div className="card">
-          <h2>Busiest days</h2>
+          <h2><Flame size={18} />Busiest days</h2>
           <p className="sub">Bookings per weekday in the range above, and how full that day ran. A day that&apos;s quiet every week is the one to aim a reward at.</p>
           {!counts.some(Boolean) ? <div className="notice" style={{ marginBottom: 0 }}>No bookings in this range yet.</div> : (
             <ReportsBarList rows={DAY_NAMES.map((day, i) => {
@@ -275,7 +276,7 @@ export default function Reports() {
             <label className="field">To<input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} /></label>
           </div>
         )}
-        <span className="small muted">📅 {caption}</span>
+        <span className="small muted" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><CalendarDays size={14} />{caption}</span>
       </div>
 
       <div className="kpis">

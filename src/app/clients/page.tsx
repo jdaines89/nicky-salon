@@ -1,17 +1,18 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useMemo, useState } from "react";
+import { Fragment, Suspense, useMemo, useState } from "react";
+import { Cake, ChevronLeft, ChevronRight, Heart, Search, UserPlus, Users } from "lucide-react";
 import { ClientForm } from "@/components/clients-form";
 import { ClientProfile } from "@/components/clients-profile";
 import { useSalon } from "@/components/data";
-import { Seg, useToast } from "@/components/ui";
+import { Empty, useToast } from "@/components/ui";
 import { recallClientsOrdered } from "@/lib/insights";
 import { clientInitial, clientVisits, fmtDayMonth, isEstimatedVisit } from "@/lib/salon";
 import type { Client } from "@/lib/types";
 
 type Filter = "all" | "recall" | "birthdays";
-const FILTERS: [Filter, string][] = [["all", "All"], ["recall", "Recall list"], ["birthdays", "Birthdays this month"]];
+const FILTERS: [Filter, string][] = [["all", "All"], ["recall", "Recall list"], ["birthdays", "Birthdays"]];
 
 function asFilter(v: string | null): Filter {
   return v === "recall" || v === "birthdays" ? v : "all";
@@ -70,38 +71,44 @@ function Clients() {
 
   const listCard = (
     <div className="card">
-      <div className="row" style={{ flexWrap: "nowrap" }}>
-        <input className="grow" type="search" placeholder="Search clients…" value={search}
+      <div className="search">
+        <Search size={18} />
+        <input type="search" placeholder="Search by name or number" value={search}
           onChange={(e) => setSearch(e.target.value)} aria-label="Search clients" />
-        <button onClick={() => setForm({ editing: null })} style={{ whiteSpace: "nowrap" }}>+ Add</button>
       </div>
-      <div style={{ margin: "10px 0 4px" }}>
-        <Seg value={filter} options={FILTERS} onChange={(f) => go({ filter: f }, true)} />
+      <div className="chips" style={{ margin: "12px 0 6px" }}>
+        {FILTERS.map(([f, label]) => (
+          <button type="button" key={f} className={`chip${filter === f ? " on" : ""}`} onClick={() => go({ filter: f }, true)}>{label}</button>
+        ))}
       </div>
-      <p className="small muted" style={{ margin: "6px 0 0" }}>{filtered.length} of {clients.length} clients</p>
       {!filtered.length && (
-        <p className="muted">
-          {filter === "recall" ? "Nobody's overdue right now." : filter === "birthdays" ? "No birthdays this month." : search ? "No clients match that search." : "No clients yet. Add your first one."}
-        </p>
+        <Empty icon={filter === "birthdays" ? Cake : filter === "recall" ? Heart : Users}
+          title={filter === "recall" ? "Nobody's overdue" : filter === "birthdays" ? "No birthdays this month" : search ? "No one by that name" : "No clients yet"}>
+          {filter === "all" && !search ? "Add your first one with the button above." : null}
+        </Empty>
       )}
       <div className="list">
-        {filtered.map((c) => {
+        {filtered.map((c, i) => {
           const v = clientVisits(c, bookings, today)[0];
-          const meta = v ? `Last visit ${isEstimatedVisit(v) ? "~" : ""}${fmtDayMonth(v.date)}${v.date.slice(0, 4) !== today.slice(0, 4) ? ` ${v.date.slice(0, 4)}` : ""}` : "New client";
+          const meta = v ? `Last in ${isEstimatedVisit(v) ? "~" : ""}${fmtDayMonth(v.date)}${v.date.slice(0, 4) !== today.slice(0, 4) ? ` ${v.date.slice(0, 4)}` : ""}` : "New client";
           const on = c.id === selectedId;
+          const letter = c.name.trim().charAt(0).toUpperCase();
+          const showLetter = filter === "all" && !search.trim() && (i === 0 || filtered[i - 1].name.trim().charAt(0).toUpperCase() !== letter);
           return (
-            <button key={c.id} className="item" onClick={() => go({ id: c.id })}
-              style={on ? { background: "var(--teal-soft)" } : undefined} aria-current={on ? "true" : undefined}>
-              <span className="avatar">{clientInitial(c.name)}</span>
-              <div className="grow">
-                <div className="title">{c.name}</div>
-                <div className="meta">
-                  {meta}
-                  {filter === "birthdays" && c.birthday ? ` · 🎂 ${fmtDayMonth(`2000-${c.birthday}`)}` : ""}
+            <Fragment key={c.id}>
+              {showLetter && <div className="cl-letter">{letter}</div>}
+              <button className={`item${on ? " on" : ""}`} onClick={() => go({ id: c.id })} aria-current={on ? "true" : undefined}>
+                <span className="avatar">{clientInitial(c.name)}</span>
+                <div className="grow">
+                  <div className="title">{c.name}</div>
+                  <div className="meta">
+                    {meta}
+                    {filter === "birthdays" && c.birthday ? ` · Birthday ${fmtDayMonth(`2000-${c.birthday}`)}` : ""}
+                  </div>
                 </div>
-              </div>
-              <span className="muted" aria-hidden>›</span>
-            </button>
+                <ChevronRight size={18} className="chev" aria-hidden />
+              </button>
+            </Fragment>
           );
         })}
       </div>
@@ -117,16 +124,23 @@ function Clients() {
           .cl-layout.has-profile .cl-back { display: none; }
         }
         @media (max-width: 899px) { .cl-layout.has-profile .cl-list { display: none; } }
+        .cl-letter { font-family: var(--serif); font-size: 16px; color: var(--gold-2); padding: 12px 6px 2px; border-bottom: 1px solid var(--line); }
+        .list > .item.on { background: var(--teal-soft); border-radius: 14px; }
       `}</style>
 
-      <h1>Clients</h1>
-      <p className="sub">Your client book</p>
+      <div className="page-head">
+        <div className="grow">
+          <h1>Clients</h1>
+          <p className="sub">{clients.length} in your book</p>
+        </div>
+        <button className="gold pill" onClick={() => setForm({ editing: null })}><UserPlus size={18} />Add</button>
+      </div>
 
       <div className={`cl-layout${selectedId ? " has-profile" : ""}`}>
         <div className="cl-list">{listCard}</div>
         {selectedId && (
           <div>
-            <button className="linkish cl-back" style={{ marginBottom: 10 }} onClick={() => go({ id: null })}>← All clients</button>
+            <button className="linkish cl-back" style={{ marginBottom: 10, display: "inline-flex", alignItems: "center", gap: 2 }} onClick={() => go({ id: null })}><ChevronLeft size={18} />All clients</button>
             {selected ? (
               <ClientProfile key={selected.id} client={selected} bookings={bookings} today={today}
                 onEdit={() => setForm({ editing: selected })} say={say} />

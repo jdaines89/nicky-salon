@@ -1,10 +1,12 @@
 "use client";
 
+import { ChevronLeft, ChevronRight, Plus, StickyNote } from "lucide-react";
 import { rand } from "@/components/ui";
+import { DayStrip } from "@/components/when-picker";
 import { bookingLook, freeText, hhmm, StatusLegend, type FvMap } from "@/components/bookings-shared";
 import {
   addDays, bookingNet, bookingTitle, CLOSE_MIN, dayOfMonth, firstName, fmtDayMonShort, freeGaps,
-  monthBounds, monthName, OPEN_MIN, toMinutes, weekday,
+  monthBounds, monthName, nowSa, OPEN_MIN, toMinutes, weekday,
 } from "@/lib/salon";
 import type { BookingWithServices, Client } from "@/lib/types";
 
@@ -28,9 +30,9 @@ function Nav({ title, onPrev, onToday, onNext, prevLabel, nextLabel }: {
   return (
     <div className="bk-nav">
       <h2>{title}</h2>
-      <button className="ghost" onClick={onPrev} aria-label={prevLabel}>←</button>
-      <button className="ghost" onClick={onToday}>Today</button>
-      <button className="ghost" onClick={onNext} aria-label={nextLabel}>→</button>
+      <button className="ghost icon pill" onClick={onPrev} aria-label={prevLabel}><ChevronLeft size={20} /></button>
+      <button className="ghost pill" onClick={onToday}>Today</button>
+      <button className="ghost icon pill" onClick={onNext} aria-label={nextLabel}><ChevronRight size={20} /></button>
     </div>
   );
 }
@@ -86,7 +88,7 @@ export function MonthView({ focus, today, bookings, setFocus, openWeek }: ViewPr
       <Nav title={`${monthName(first)} ${first.slice(0, 4)}`} prevLabel="Previous month" nextLabel="Next month"
         onPrev={() => setFocus(shiftMonth(first, -1))} onToday={() => setFocus(today)} onNext={() => setFocus(shiftMonth(first, 1))} />
       <p className="small muted" style={{ marginTop: 0 }}>
-        Tap a day to see its week · <b>{monthAppts.length}</b> booking{monthAppts.length !== 1 ? "s" : ""} this month ·{" "}
+        <b>{monthAppts.length}</b> booking{monthAppts.length !== 1 ? "s" : ""} this month ·{" "}
         <b>{rand(monthRev)}</b> confirmed
       </p>
       <div className="bk-month">
@@ -133,7 +135,6 @@ export function WeekView({ focus, today, bookings, clientById, fv, setFocus, onE
       <div className="card">
         <Nav title={`${fmtDayMonShort(start)} – ${fmtDayMonShort(end)}`} prevLabel="Previous week" nextLabel="Next week"
           onPrev={() => setFocus(addDays(start, -7))} onToday={() => setFocus(today)} onNext={() => setFocus(addDays(start, 7))} />
-        <p className="small muted" style={{ marginTop: 0 }}>Tap a day to open its Day view · tap ＋ to book straight into that day · tap a booking to edit it.</p>
         <StatusLegend />
         <div className="bk-week">
           <div />
@@ -144,7 +145,7 @@ export function WeekView({ focus, today, bookings, clientById, fv, setFocus, onE
           ))}
           <div />
           {days.map((d) => (
-            <button key={d} className="bk-wadd" onClick={() => addOn(d)} aria-label={`New booking on ${fmtDayMonShort(d)}`}>＋</button>
+            <button key={d} className="bk-wadd" onClick={() => addOn(d)} aria-label={`New booking on ${fmtDayMonShort(d)}`}><Plus size={16} /></button>
           ))}
           {hours.map((h) => (
             <HourRow key={h} h={h} days={days} appts={weekAppts} rowOf={rowOf} byId={clientById} fv={fv} onEdit={onEdit} />
@@ -152,7 +153,7 @@ export function WeekView({ focus, today, bookings, clientById, fv, setFocus, onE
         </div>
       </div>
       <div className="card">
-        <h2>This week&apos;s bookings</h2>
+        <h2>This week, in order</h2>
         {!weekAppts.length && <p className="muted" style={{ margin: 0 }}>Nothing booked this week.</p>}
         <div className="list bk-rows">
           {weekAppts.map((b) => <BookingRow key={b.id} b={b} byId={clientById} fv={fv} onEdit={onEdit} showDate />)}
@@ -190,6 +191,7 @@ function HourRow({ h, days, appts, rowOf, byId, fv, onEdit }: {
 // ---------------------------------------------------------------- DAY
 
 const PX = 1.2; // px per minute
+const MIN_APPT = 34; // shortest drawn appointment, tall enough to read
 
 /** Side-by-side lanes for overlapping bookings, so a double-booking is visible, not hidden underneath. */
 function lanes(items: { id: string; s: number; e: number }[]): Map<string, { lane: number; of: number }> {
@@ -224,71 +226,74 @@ export function DayView({ focus, today, bookings, clientById, fv, setFocus, onEd
     return { b, id: b.id, s: Math.max(s0, OPEN_MIN), e: Math.min(s0 + (b.duration_minutes || 30), CLOSE_MIN) };
   }).filter((x) => x.e > x.s);
   const laneOf = lanes(items);
-  const outside = appts.length - items.length;
-  const heading = focus === today ? "Today" : focus === addDays(today, 1) ? "Tomorrow" : null;
+  const outside = appts.filter((b) => !items.some((x) => x.id === b.id));
+  const live = appts.filter((b) => b.status !== "cancelled" && b.status !== "no-show");
+  const takings = live.reduce((s, b) => s + bookingNet(b), 0);
+  const open = gaps.reduce((s, [a, b]) => s + b - a, 0);
+  const now = nowSa();
+  const nowMin = now.hour * 60 + now.minute;
 
   return (
     <>
       <div className="card">
-        <Nav title={`${heading ? heading + ", " : ""}${["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][weekday(focus)]} ${fmtDayMonShort(focus)}`}
-          prevLabel="Previous day" nextLabel="Next day"
-          onPrev={() => setFocus(addDays(focus, -1))} onToday={() => setFocus(today)} onNext={() => setFocus(addDays(focus, 1))} />
-        <p className="small muted" style={{ marginTop: 0 }}>
-          {appts.length} booking{appts.length !== 1 ? "s" : ""}
-          {gaps.length ? ` · ${freeText(gaps.reduce((s, [a, b]) => s + b - a, 0))} open` : " · fully booked"}
-        </p>
-        {gaps.length > 0 && (
-          <>
-            <div className="small" style={{ fontWeight: 600, marginBottom: 6 }}>Tap an open slot to book it:</div>
-            <div className="bk-slots">
-              {gaps.slice(0, 6).map(([s, e]) => (
-                <button key={s} className="bk-slot" onClick={() => bookSlot(focus, s)} aria-label={`Book ${hhmm(s)}, ${freeText(e - s)} free until ${hhmm(e)}`}>
-                  ＋ {hhmm(s)}<small>{freeText(e - s)} free</small>
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-        <StatusLegend />
+        <DayStrip value={focus} onChange={setFocus} today={today} bookings={bookings} pastDays={120} />
+        <div className="bk-daysum">
+          <div><b>{live.length}</b><span>{live.length === 1 ? "client" : "clients"}</span></div>
+          <div><b>{open ? freeText(open) : "Full"}</b><span>{open ? "open" : "no gaps"}</span></div>
+          <div><b>{rand(takings)}</b><span>booked</span></div>
+        </div>
         <div className="bk-tl">
           <div className="lbls" style={{ height }}>
             {Array.from({ length: 12 }, (_, i) => 8 + i).map((h) => (
-              <span key={h} style={{ top: Math.max(6, (h * 60 - OPEN_MIN) * PX) }}>{String(h).padStart(2, "0")}:00</span>
+              <span key={h} style={{ top: Math.max(6, (h * 60 - OPEN_MIN) * PX) }}>{h > 12 ? h - 12 : h}{h < 12 ? "am" : "pm"}</span>
             ))}
           </div>
           <div className="track" style={{ height, backgroundSize: `100% ${60 * PX}px` }}>
-            {gaps.map(([s, e]) => (
-              <button key={`g${s}`} className="bk-gap" style={{ top: (s - OPEN_MIN) * PX + 1, height: (e - s) * PX - 2 }}
-                onClick={() => bookSlot(focus, s)}>
-                ＋ {freeText(e - s)} free from {hhmm(s)}
-              </button>
-            ))}
+            {gaps.map(([s, e]) => {
+              // A short appointment is drawn taller than its minutes so it can be
+              // read, so a gap starts below whatever is drawn above it.
+              const above = items.filter((x) => x.e <= s).reduce((m, x) => Math.max(m, (x.s - OPEN_MIN) * PX + Math.max((x.e - x.s) * PX, MIN_APPT)), 0);
+              const top = Math.max((s - OPEN_MIN) * PX, above) + 2, gh = (e - OPEN_MIN) * PX - 2 - top;
+              if (gh < 12) return null;
+              return (
+                <button key={`g${s}`} className="bk-gap" style={{ top, height: gh, paddingTop: gh < 30 ? 0 : undefined, alignItems: gh < 30 ? "center" : undefined }}
+                  onClick={() => bookSlot(focus, s)} aria-label={`Book ${hhmm(s)}, ${freeText(e - s)} free until ${hhmm(e)}`}>
+                  {gh >= 22 && <><Plus size={15} /> {hhmm(s)}<span>{freeText(e - s)} free</span></>}
+                </button>
+              );
+            })}
             {items.map(({ b, s, e }) => {
               const look = bookingLook(b, fv);
               const l = laneOf.get(b.id) ?? { lane: 0, of: 1 };
               const faded = b.status === "cancelled" || b.status === "no-show";
+              const h = Math.max((e - s) * PX, MIN_APPT);
               return (
-                <button key={b.id} className="bk-appt" onClick={() => onEdit(b)}
+                <button key={b.id} className={`bk-appt${faded ? " off" : ""}${h < 46 ? " short" : ""}`} onClick={() => onEdit(b)}
                   style={{
-                    top: (s - OPEN_MIN) * PX, height: Math.max((e - s) * PX, 26), background: look.color,
+                    top: (s - OPEN_MIN) * PX, height: h, ["--c" as string]: look.color,
                     left: `calc(4px + (100% - 8px) * ${l.lane / l.of})`,
-                    width: `calc((100% - 8px) / ${l.of} - 2px)`, opacity: faded ? 0.55 : 1, zIndex: faded ? 1 : 2,
+                    width: `calc((100% - 8px) / ${l.of} - 3px)`, zIndex: faded ? 1 : 2,
                   }}>
-                  <span className="n">{nameOf(b, clientById)}</span>
+                  <span className="n"><span className="nm">{nameOf(b, clientById)}</span>{look.label !== "Confirmed" && <em>{look.label}</em>}</span>
                   <span className="w">{b.time.slice(0, 5)}–{hhmm(toMinutes(b.time) + (b.duration_minutes || 30))} · {bookingTitle(b)}</span>
+                  {b.notes && h >= 70 && <span className="w nt"><StickyNote size={11} /> {b.notes}</span>}
                 </button>
               );
             })}
+            {focus === today && nowMin > OPEN_MIN && nowMin < CLOSE_MIN && (
+              <div className="bk-now" style={{ top: (nowMin - OPEN_MIN) * PX }} aria-hidden><i /></div>
+            )}
           </div>
         </div>
-        {outside > 0 && <p className="small muted">{outside} booking{outside !== 1 ? "s are" : " is"} outside 08:00–19:00; see the list below.</p>}
-      </div>
-      <div className="card">
-        <h2>Bookings list</h2>
-        {!appts.length && <p className="muted" style={{ margin: 0 }}>No bookings on this day.</p>}
-        <div className="list bk-rows">
-          {appts.map((b) => <BookingRow key={b.id} b={b} byId={clientById} fv={fv} onEdit={onEdit} />)}
-        </div>
+        {outside.length > 0 && (
+          <>
+            <p className="small muted">Outside 08:00–19:00:</p>
+            <div className="list bk-rows">
+              {outside.map((b) => <BookingRow key={b.id} b={b} byId={clientById} fv={fv} onEdit={onEdit} />)}
+            </div>
+          </>
+        )}
+        <StatusLegend />
       </div>
     </>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { AlertTriangle, CalendarClock, Download, FileSpreadsheet } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { Kpi, rand } from "@/components/ui";
@@ -63,7 +64,7 @@ export function ReportsPayroll({ bookings, clients, today, onError }: {
 
   return (
     <>
-      <h2>Services for your pay</h2>
+      <h2><FileSpreadsheet size={18} />Services for your pay</h2>
       <p className="sub">
         One month of the work you actually did, as a spreadsheet you can edit before sending it on.
         Pick the month right here. The range buttons at the top of the page don&apos;t change it.
@@ -76,15 +77,15 @@ export function ReportsPayroll({ bookings, clients, today, onError }: {
 
       {stillPending.length > 0 && (
         <div className="notice warn">
-          ⚠️ <b>{stillPending.length} appointment{stillPending.length === 1 ? "" : "s"} in {label} {stillPending.length === 1 ? "is" : "are"} still
+          <AlertTriangle size={16} style={{ verticalAlign: -3 }} /> <b>{stillPending.length} appointment{stillPending.length === 1 ? "" : "s"} in {label} {stillPending.length === 1 ? "is" : "are"} still
           marked pending</b>, worth {rand(stillPending.reduce((s, b) => s + bookingNet(b), 0))}, and left out of this list.
           Say whether each one happened first, or you&apos;ll hand in a month that&apos;s short.{" "}
-          <Link href="/">Sort them out on Today →</Link>
+          <Link href="/">Sort them out on Today</Link>
         </div>
       )}
       {later.length > 0 && (
         <div className="notice">
-          🗓️ {later.length} confirmed booking{later.length === 1 ? "" : "s"} later in {label} {later.length === 1 ? "is" : "are"} not
+          <CalendarClock size={16} style={{ verticalAlign: -3 }} /> {later.length} confirmed booking{later.length === 1 ? "" : "s"} later in {label} {later.length === 1 ? "is" : "are"} not
           counted. That work hasn&apos;t happened yet. Export again once the month is over.
         </div>
       )}
@@ -117,9 +118,9 @@ export function ReportsPayroll({ bookings, clients, today, onError }: {
           </div>
 
           <div className="fields2" style={{ marginBottom: 8 }}>
-            <button className="gold" onClick={xlsx} disabled={busy}>⬇️ Excel (.xlsx)</button>
+            <button className="gold" onClick={xlsx} disabled={busy}><Download size={17} />Excel (.xlsx)</button>
             <button className="ghost" onClick={() => download(rowsToCsv(rows), "text/csv", exportFilename(picked, "csv"))}>
-              ⬇️ CSV
+              <Download size={17} />CSV
             </button>
           </div>
           <p className="small muted">
