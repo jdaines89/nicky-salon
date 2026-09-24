@@ -106,7 +106,7 @@ nav.tabs .wide-only { display: none; }
   nav.tabs a, nav.tabs button.tab { flex-direction: row; height: 40px; gap: 7px; font-size: 14px; padding: 0 12px; }
   nav.tabs a:hover { background: var(--paper-2); color: var(--ink); }
   nav.tabs a.on { background: var(--card); box-shadow: var(--shadow-1); }
-  nav.tabs .book, nav.tabs .phone-only { display: none; }
+  nav.tabs .book, nav.tabs button.tab.phone-only { display: none; }
   nav.tabs .wide-only { display: flex; }
 }
 .more-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
