@@ -43,6 +43,9 @@ def nail_svg(c):
     return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><rect width="400" height="400" fill="#EFE3D8"/><rect y="250" width="400" height="150" fill="#E6D5C6"/>{nails}</svg>'
 photos = [{"id": str(uuid.uuid4()), "client_id": clients[i % len(clients)]["id"], "booking_id": bookings[i * 7]["id"],
            "storage_path": f"{clients[i % len(clients)]['id']}/p{i}.svg", "caption": None, "created_at": d(-i * 3) + "T10:00:00Z"} for i in range(12)]
+# One of today's visits already has a photo, for the booking sheet's Photos row.
+photos.append({"id": str(uuid.uuid4()), "client_id": clients[0]["id"], "booking_id": bookings[-2]["id"],
+               "storage_path": f"{clients[0]['id']}/p12.svg", "caption": None, "created_at": d(0) + "T10:05:00Z"})
 TABLES = {"clients": clients, "services": services, "bookings": bookings, "recurring_series": [], "client_photos": photos, "booking_services": []}
 writes = []
 
@@ -117,6 +120,11 @@ with sync_playwright() as p:
         page.screenshot(path=os.path.join(SHOTS, f"{label}_sheet_1_open.png"))
         page.fill("input[aria-label='Search clients']", clients[0]["name"][:4])
         page.locator(".cp-list button.item").first.click()
+        page.wait_for_timeout(200)
+        page.screenshot(path=os.path.join(SHOTS, f"{label}_sheet_1b_services.png"))
+        page.locator("button.sp-cat-h", has_text="Gel Overlays").click()
+        page.wait_for_timeout(250)
+        page.screenshot(path=os.path.join(SHOTS, f"{label}_sheet_1c_category.png"))
         page.locator("button.sp-opt").nth(1).click()
         page.locator("button.ts-slot").nth(2).click()
         page.wait_for_timeout(300)
@@ -130,6 +138,18 @@ with sync_playwright() as p:
         if page.locator(".sheet").count(): errs.append("booking sheet still open after Book")
         if errs: failures.append((label, "booking flow", errs))
         print(("FAIL " if errs else "ok   ") + label, "booking flow", errs[:3])
+        page.close()
+        # A visit from today, opened from the diary: its Photos row.
+        page = ctx.new_page(); errs = []
+        page.on("pageerror", lambda e: errs.append("pageerror: " + str(e)))
+        page.goto(f"http://127.0.0.1:{srv.server_address[1]}/bookings/?day={d(0)}&open={bookings[-2]['id']}"); page.wait_for_timeout(1800)
+        if not page.locator("button.bp-add").count(): errs.append("no Photos row on today's booking")
+        else:
+            page.locator("button.bp-add").scroll_into_view_if_needed(); page.wait_for_timeout(300)
+        if not page.locator("button.bp-th").count(): errs.append("booking photo not shown")
+        page.screenshot(path=os.path.join(SHOTS, f"{label}_sheet_5_photos.png"))
+        if errs: failures.append((label, "booking photos", errs))
+        print(("FAIL " if errs else "ok   ") + label, "booking photos", errs[:3])
         page.close()
         # Each look she can pick, on the two screens she sees most.
         if label == "phone":
@@ -154,6 +174,7 @@ with sync_playwright() as p:
                     if tag == "sheet":
                         page.fill("input[aria-label='Search clients']", clients[0]["name"][:4])
                         page.locator(".cp-list button.item").first.click()
+                        page.locator("button.sp-cat-h", has_text="Gel Overlays").click()
                         page.locator("button.sp-opt").nth(1).click()
                         page.locator("button.ts-slot").nth(2).click(); page.wait_for_timeout(300)
                     page.screenshot(path=os.path.join(SHOTS, f"look_{look}_{tag}.png"), full_page=(tag == "today"))

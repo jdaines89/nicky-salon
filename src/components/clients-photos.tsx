@@ -112,8 +112,8 @@ export async function prepareImage(file: Blob): Promise<{ blob: Blob; note: stri
 }
 
 /** Under a thumbnail: the date, then her own caption, else what she did that visit. */
-function captionLine(p: ClientPhoto, serviceLabel: string | null): string {
-  const when = (p.created_at || "").slice(0, 10);
+function captionLine(p: ClientPhoto, serviceLabel: string | null, visitDate?: string): string {
+  const when = (visitDate || p.created_at || "").slice(0, 10);
   const bits = when ? [fmtDayMonth(when)] : [];
   if (p.caption) bits.push(p.caption);
   else if (serviceLabel) bits.push(serviceLabel);
@@ -225,7 +225,7 @@ export function ClientPhotos({ clientId, bookings, today, say }: {
                   )}
                   <div style={{ paddingTop: 6, lineHeight: 1.3 }}>
                     <div className="row" style={{ flexWrap: "nowrap", gap: 0, alignItems: "center" }}>
-                      <b className="grow" style={{ fontSize: 14, whiteSpace: "nowrap" }}>{p.created_at ? fmtDayMonShort(p.created_at.slice(0, 10)) : "Photo"}</b>
+                      <b className="grow" style={{ fontSize: 14, whiteSpace: "nowrap" }}>{bk ? fmtDayMonShort(bk.date) : p.created_at ? fmtDayMonShort(p.created_at.slice(0, 10)) : "Photo"}</b>
                       <button className="ghost" aria-label="Photo options" onClick={() => setMenuFor(p)}
                         style={{ minHeight: 32, width: 36, padding: 0, border: 0, background: "none", color: "var(--ink-soft)" }}><MoreHorizontal size={18} /></button>
                     </div>
@@ -262,7 +262,7 @@ export function ClientPhotos({ clientId, bookings, today, say }: {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={urls[viewing.storage_path]} alt="" style={{ width: "100%", borderRadius: 12, display: "block" }} />
           <p className="small muted">
-            {captionLine(viewing, viewing.booking_id && byId.get(viewing.booking_id) ? bookingTitle(byId.get(viewing.booking_id)!) : null)}
+            {captionLine(viewing, viewing.booking_id && byId.get(viewing.booking_id) ? bookingTitle(byId.get(viewing.booking_id)!) : null, viewing.booking_id ? byId.get(viewing.booking_id)?.date : undefined)}
           </p>
         </Sheet>
       )}
@@ -270,8 +270,10 @@ export function ClientPhotos({ clientId, bookings, today, say }: {
   );
 }
 
-function AddPhotoSheet({ clientId, bookings, today, onClose, onSaved }: {
+export function AddPhotoSheet({ clientId, bookingId, bookings, today, onClose, onSaved }: {
   clientId: string;
+  /** The visit this photo is of. Without it, her most recent completed visit. */
+  bookingId?: string;
   bookings: BookingWithServices[];
   today: string;
   onClose: () => void;
@@ -311,10 +313,11 @@ function AddPhotoSheet({ clientId, bookings, today, onClose, onSaved }: {
     setWorking(true);
     setErr("");
     // Tag it to the visit it belongs to, so the photo carries what was actually done that day.
-    let last: BookingWithServices | null = null;
-    for (const b of bookings) {
+    let last: { id: string } | null = bookingId ? { id: bookingId } : null;
+    if (!bookingId) for (const b of bookings) {
       if (b.client_id !== clientId || b.date > today || b.status !== "confirmed") continue;
-      if (!last || b.date + b.time > last.date + last.time) last = b;
+      const l = last as BookingWithServices | null;
+      if (!l || b.date + b.time > l.date + l.time) last = b;
     }
     try {
       await addClientPhoto(clientId, prepared.blob, cleanCaption(caption) || null, last?.id ?? null);
@@ -354,3 +357,73 @@ function AddPhotoSheet({ clientId, bookings, today, onClose, onSaved }: {
     </Sheet>
   );
 }
+
+/**
+ * The photos of one visit, inside that booking: the natural place to add one is
+ * the appointment she has just finished, and it is tagged to exactly that visit.
+ * Stays quiet (renders nothing) if photos are not set up.
+ */
+export function BookingPhotos({ clientId, bookingId, bookings, today, say }: {
+  clientId: string;
+  bookingId: string;
+  bookings: BookingWithServices[];
+  today: string;
+  say?: (msg: string) => void;
+}) {
+  const [photos, setPhotos] = useState<ClientPhoto[] | null>(null);
+  const [urls, setUrls] = useState<Record<string, string>>({});
+  const [adding, setAdding] = useState(false);
+  const [viewing, setViewing] = useState<ClientPhoto | null>(null);
+  const [note, setNote] = useState("");
+
+  const load = useCallback(async () => {
+    try {
+      const list = (await getClientPhotos(clientId)).filter((p) => p.booking_id === bookingId);
+      setPhotos(list);
+      setUrls(await photoUrls(list.map((p) => p.storage_path)));
+    } catch {
+      setPhotos(null); // not set up, or offline: the booking still works
+    }
+  }, [clientId, bookingId]);
+  useEffect(() => { load(); }, [load]);
+
+  if (photos === null) return null;
+  return (
+    <div className="bp">
+      <div className="bp-row">
+        {photos.map((p) => urls[p.storage_path] && (
+          <button type="button" key={p.id} className="bp-th" onClick={() => setViewing(p)} aria-label="View photo larger">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={urls[p.storage_path]} alt="" />
+          </button>
+        ))}
+        <button type="button" className="bp-add" onClick={() => setAdding(true)}>
+          <Camera size={22} strokeWidth={1.8} />{photos.length ? "Add" : "Add photo"}
+        </button>
+      </div>
+      {!photos.length && <p className="small muted" style={{ margin: "8px 0 0" }}>Snap her nails before she leaves, so next time you both know exactly what she had.</p>}
+      {note && <p className="small muted" style={{ margin: "8px 0 0" }}>{note}</p>}
+      {adding && (
+        <AddPhotoSheet clientId={clientId} bookingId={bookingId} bookings={bookings} today={today}
+          onClose={() => setAdding(false)}
+          onSaved={async (n) => { setAdding(false); await load(); setNote(`Photo saved · ${n}`); say?.("Photo saved."); }} />
+      )}
+      {viewing && urls[viewing.storage_path] && (
+        <Sheet title="Photo" onClose={() => setViewing(null)}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={urls[viewing.storage_path]} alt="" style={{ width: "100%", borderRadius: 12, display: "block" }} />
+          {viewing.caption && <p className="small muted">{viewing.caption}</p>}
+        </Sheet>
+      )}
+    </div>
+  );
+}
+
+export const BOOKING_PHOTOS_CSS = `
+.bp-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.bp-row::-webkit-scrollbar { display: none; }
+button.bp-th { flex: none; width: 84px; height: 84px; padding: 0; border: 0; border-radius: 16px; overflow: hidden; background: var(--teal-soft); }
+button.bp-th img { width: 100%; height: 100%; object-fit: cover; display: block; }
+button.bp-add { flex: none; width: 84px; height: 84px; padding: 6px; border-radius: 16px; border: 1.5px dashed var(--gold); background: var(--gold-soft);
+  color: var(--gold-ink); flex-direction: column; gap: 4px; font-size: 13px; font-weight: 700; line-height: 1.15; text-align: center; }
+`;

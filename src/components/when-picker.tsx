@@ -332,6 +332,8 @@ button.ts-slot.on { background: var(--teal); color: var(--on-accent); border-col
 button.ts-slot.on small, button.ts-slot.on .spark { color: color-mix(in srgb, var(--on-accent) 80%, transparent); }
 .ts-none { margin: 4px 0 12px; padding: 14px; border-radius: 14px; background: var(--paper); color: var(--ink-2); font-size: 15.5px; text-align: center; }
 .ts-foot { display: flex; align-items: center; gap: 8px; min-height: 32px; }
+.ts-foot > .small { flex: 1 1 auto; min-width: 0; }
+.ts-foot > button { flex: none; white-space: nowrap; }
 .cc { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line-2); animation: pop .18s var(--ease) both; }
 .cc-grid { display: grid; gap: 6px; margin-bottom: 12px; }
 .cc-grid.h { grid-template-columns: repeat(5, minmax(0, 1fr)); }
