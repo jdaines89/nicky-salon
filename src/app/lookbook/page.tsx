@@ -131,7 +131,7 @@ export default function Lookbook() {
           <div className="lb-meta">
             <div className="grow">
               <div style={{ fontWeight: 650 }}>{serviceOf(viewing) ?? "Nail set"}</div>
-              <div className="small muted">{viewing.created_at ? fmtDayMonth(viewing.created_at.slice(0, 10)) : ""}{viewing.caption ? ` · ${viewing.caption}` : ""}</div>
+              <div className="small muted">{(() => { const d = (viewing.booking_id && bookingById.get(viewing.booking_id)?.date) || viewing.created_at?.slice(0, 10); return d ? fmtDayMonth(d) : ""; })()}{viewing.caption ? ` · ${viewing.caption}` : ""}</div>
             </div>
             <button type="button" className="soft pill" onClick={() => share(viewing)}><Share2 size={17} />Share</button>
           </div>

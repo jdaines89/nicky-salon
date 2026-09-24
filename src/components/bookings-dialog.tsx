@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CalendarClock, ChevronDown, Gift, Sparkles, Trash2, UserRound } from "lucide-react";
+import { AlertTriangle, CalendarClock, Camera, ChevronDown, Gift, Sparkles, Trash2, UserRound } from "lucide-react";
+import { BOOKING_PHOTOS_CSS, BookingPhotos } from "@/components/clients-photos";
 import { useSalon } from "@/components/data";
 import { rand, Seg, Sheet } from "@/components/ui";
 import {
@@ -109,6 +110,18 @@ export function BookingSheet({ booking, draft, onClose, onDone }: {
 
   const client = resolveClient(choice, clients, clientById);
 
+  // Her usual: what she had at her last completed visit, offered as one tap.
+  const usual = useMemo(() => {
+    if (isEdit || !client) return [];
+    let last: BookingWithServices | null = null;
+    for (const b of bookings) {
+      if (b.client_id !== client.id || b.status !== "confirmed" || b.date > today) continue;
+      if (!last || b.date + b.time > last.date + last.time) last = b;
+    }
+    const got = (last?.booking_services ?? []).map((bs) => opts.find((o) => o.id === bs.service_id)).filter((o) => o != null);
+    return got.length === last?.booking_services.length ? got : [];
+  }, [isEdit, client, bookings, today, opts]);
+
   // Loyalty: tell her on the spot that this visit is the 20%-off one.
   let loyalty: { visits: number; reward: number } | null = null;
   if (client && lines.length && date >= today) {
@@ -203,7 +216,7 @@ export function BookingSheet({ booking, draft, onClose, onDone }: {
 
   return (
     <Sheet title={isEdit ? "Edit booking" : "New booking"} onClose={onClose}>
-      <style>{WHEN_CSS}</style>
+      <style>{WHEN_CSS + BOOKING_PHOTOS_CSS}</style>
       <div className="stack bs">
         <div className="section">
           <div className="section-label"><UserRound size={14} />Client
@@ -232,8 +245,15 @@ export function BookingSheet({ booking, draft, onClose, onDone }: {
 
         <div className="section">
           <div className="section-label"><Sparkles size={14} />Services</div>
-          <ServicePicker opts={opts} lines={lines} onChange={setLines} />
+          <ServicePicker key={client?.id ?? "none"} opts={opts} lines={lines} onChange={setLines} usual={usual} />
         </div>
+
+        {booking?.client_id && booking.date <= today && booking.status !== "cancelled" && booking.status !== "no-show" && (
+          <div className="section">
+            <div className="section-label"><Camera size={14} />Photos of this visit</div>
+            <BookingPhotos clientId={booking.client_id} bookingId={booking.id} bookings={bookings} today={today} />
+          </div>
+        )}
 
         <div className="section">
           <div className="section-label"><CalendarClock size={14} />When</div>

@@ -440,3 +440,16 @@ button.look.on { border-color: var(--teal); box-shadow: 0 0 0 3px color-mix(in s
    headings a little more weight so nothing needs a squint. */
 :root[data-look="stage"] :is(.wp-day .dn, .bk-daysum b, .dur-v b, .stat b, .pf-tiles b, .kpi .value, .bs-total, .wp-month, .bk-nav h2, .sheet-head h2, .pf-next b, .hero-name, .avatar.lg) { font-weight: 560; }
 :root[data-look="stage"] h1 { font-weight: 500; }
+
+/* Folding category list (booking service picker, price list): a handful of
+   headings instead of every service at once. */
+.sp-cats { margin-top: 10px; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: var(--card); }
+.sp-cat + .sp-cat { border-top: 1px solid var(--line); }
+button.sp-cat-h { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 60px; padding: 10px 14px; background: none; color: var(--ink); border: 0; border-radius: 0; text-align: left; font-weight: inherit; }
+button.sp-cat-h .grow { display: flex; flex-direction: column; gap: 1px; }
+button.sp-cat-h:active { transform: none; background: var(--teal-mist); }
+.sp-chev { color: var(--ink-soft); transition: transform .2s var(--ease); flex: none; }
+.sp-cat.open .sp-chev { transform: rotate(180deg); }
+.sp-cat.open > button.sp-cat-h { background: var(--teal-mist); }
+.sp-cat-b { padding: 0 8px 4px 14px; animation: pop .18s var(--ease) both; }
+button.sp-cat-h .sp-name { font-weight: 650; line-height: 1.3; }

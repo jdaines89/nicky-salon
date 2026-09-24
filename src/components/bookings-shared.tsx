@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Package, Plus, Search, Sparkles, UserPlus, X } from "lucide-react";
+import { ChevronDown, Package, Plus, RotateCcw, Search, Sparkles, UserPlus, X } from "lucide-react";
 import { rand } from "@/components/ui";
 import { firstVisitMap, isFirstVisit, PACKAGE_CATEGORY, toMinutes, validPhone } from "@/lib/salon";
 import type { BookingWithServices, Client, Service } from "@/lib/types";
@@ -87,20 +87,44 @@ export function lineFromOpt(o: SvcOpt): Line {
  * category, tap a service, done. Most visits are one service, so the list
  * folds away after a pick and "Add another" brings it back.
  */
-export function ServicePicker({ opts, lines, onChange }: { opts: SvcOpt[]; lines: Line[]; onChange: (l: Line[]) => void }) {
+/**
+ * Services fold into their categories, so she sees a handful of headings
+ * rather than the whole price list: tap one open, tap a service, done. Search
+ * cuts straight across them. When the client has been before, her usual
+ * visit is one tap at the top.
+ */
+export function ServicePicker({ opts, lines, onChange, usual }: {
+  opts: SvcOpt[]; lines: Line[]; onChange: (l: Line[]) => void; usual?: SvcOpt[];
+}) {
   const [open, setOpen] = useState(lines.length === 0);
   const [q, setQ] = useState("");
-  const cats = useMemo(() => {
-    const out: string[] = [];
-    for (const o of opts) { const g = o.pkg ? PACKAGE_CATEGORY : o.category; if (!out.includes(g)) out.push(g); }
-    return out;
-  }, [opts]);
   const [cat, setCat] = useState<string | null>(null);
   const chosenIds = new Set(lines.map((l) => l.service_id));
+  const groups = useMemo(() => {
+    const out = new Map<string, SvcOpt[]>();
+    for (const o of opts) {
+      const g = o.pkg ? PACKAGE_CATEGORY : o.category;
+      out.set(g, [...(out.get(g) ?? []), o]);
+    }
+    return [...out.entries()];
+  }, [opts]);
   const needle = q.trim().toLowerCase();
-  const shown = opts.filter((o) => !chosenIds.has(o.id)
-    && (needle ? o.name.toLowerCase().includes(needle) || o.category.toLowerCase().includes(needle) : !cat || (o.pkg ? PACKAGE_CATEGORY : o.category) === cat));
+  const found = needle ? opts.filter((o) => !chosenIds.has(o.id) && (o.name.toLowerCase().includes(needle) || o.category.toLowerCase().includes(needle))) : [];
   const total = lines.reduce((s, l) => s + l.price, 0);
+  const pick = (o: SvcOpt) => { onChange([...lines, lineFromOpt(o)]); setQ(""); setOpen(false); };
+  const usualOk = !lines.length && usual && usual.length > 0;
+
+  const option = (o: SvcOpt, showCat = false) => (
+    <button type="button" key={o.id} className="sp-opt" onClick={() => pick(o)}>
+      <div className="grow">
+        <div className="sp-name">{o.pkg && <Package size={14} style={{ verticalAlign: -2, marginRight: 4, color: "var(--gold-2)" }} />}{o.name}</div>
+        <div className="small muted">{o.duration} min{showCat ? ` · ${o.pkg ? PACKAGE_CATEGORY : o.category}` : ""}</div>
+      </div>
+      <span className="num sp-price">{rand(o.price)}</span>
+      <span className="sp-add" aria-hidden><Plus size={16} /></span>
+    </button>
+  );
+
   return (
     <div>
       {lines.length > 0 && (
@@ -124,31 +148,51 @@ export function ServicePicker({ opts, lines, onChange }: { opts: SvcOpt[]; lines
         <button type="button" className="soft pill" style={{ marginTop: 10 }} onClick={() => setOpen(true)}><Plus size={17} />Add another service</button>
       ) : (
         <div className="sp-panel">
+          {usualOk && !needle && (
+            <button type="button" className="sp-usual" onClick={() => { onChange(usual!.map(lineFromOpt)); setOpen(false); }}>
+              <span className="sp-ico" aria-hidden><RotateCcw size={17} /></span>
+              <div className="grow">
+                <div className="small muted">Her usual</div>
+                <div className="sp-name">{usual!.map((o) => o.name).join(" + ")}</div>
+              </div>
+              <span className="num sp-price">{rand(usual!.reduce((s, o) => s + o.price, 0))}</span>
+            </button>
+          )}
           <div className="search">
             <Search size={18} />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search services…" aria-label="Search services" autoComplete="off" />
           </div>
-          {!needle && cats.length > 1 && (
-            <div className="chips" style={{ margin: "10px 0 4px" }}>
-              <button type="button" className={`chip${cat === null ? " on" : ""}`} onClick={() => setCat(null)}>All</button>
-              {cats.map((c) => (
-                <button type="button" key={c} className={`chip${cat === c ? " on" : ""}`} onClick={() => setCat(c)}>{c}</button>
-              ))}
+          {needle ? (
+            <div className="sp-list">
+              {found.map((o) => option(o, true))}
+              {!found.length && <p className="small muted" style={{ padding: "10px 4px", margin: 0 }}>No service by that name.</p>}
+            </div>
+          ) : (
+            <div className="sp-cats">
+              {groups.map(([g, list]) => {
+                const left = list.filter((o) => !chosenIds.has(o.id));
+                const isOpen = cat === g || groups.length === 1;
+                const from = Math.min(...list.map((o) => o.price));
+                return (
+                  <div key={g} className={`sp-cat${isOpen ? " open" : ""}`}>
+                    <button type="button" className="sp-cat-h" aria-expanded={isOpen} onClick={() => setCat(isOpen ? null : g)}>
+                      <span className="grow">
+                        <span className="sp-name">{g === PACKAGE_CATEGORY && <Package size={15} style={{ verticalAlign: -2, marginRight: 6, color: "var(--gold-2)" }} />}{g}</span>
+                        <span className="small muted">{list.length} {list.length === 1 ? "service" : "services"} · from {rand(from)}</span>
+                      </span>
+                      <ChevronDown size={20} className="sp-chev" />
+                    </button>
+                    {isOpen && (
+                      <div className="sp-cat-b">
+                        {left.map((o) => option(o))}
+                        {!left.length && <p className="small muted" style={{ padding: "8px 4px", margin: 0 }}>Everything here is already added.</p>}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
-          <div className="sp-list">
-            {shown.map((o) => (
-              <button type="button" key={o.id} className="sp-opt" onClick={() => { onChange([...lines, lineFromOpt(o)]); setQ(""); setOpen(false); }}>
-                <div className="grow">
-                  <div className="sp-name">{o.pkg && <Package size={14} style={{ verticalAlign: -2, marginRight: 4, color: "var(--gold-2)" }} />}{o.name}</div>
-                  <div className="small muted">{o.duration} min{cat === null && !needle ? ` · ${o.pkg ? PACKAGE_CATEGORY : o.category}` : ""}</div>
-                </div>
-                <span className="num sp-price">{rand(o.price)}</span>
-                <span className="sp-add" aria-hidden><Plus size={16} /></span>
-              </button>
-            ))}
-            {!shown.length && <p className="small muted" style={{ padding: "10px 4px", margin: 0 }}>{needle ? "No service by that name." : "Everything in this category is already added."}</p>}
-          </div>
           {lines.length > 0 && <button type="button" className="linkish" style={{ marginTop: 8 }} onClick={() => setOpen(false)}>Done</button>}
         </div>
       )}
@@ -266,7 +310,10 @@ button.sp-x:hover { background: var(--paper-2); color: var(--danger); }
 .sp-sum b { color: var(--ink); }
 .sp-panel { margin-top: 10px; }
 .sp-chosen + .sp-panel { padding-top: 12px; border-top: 1px dashed var(--line-2); }
-.sp-list { max-height: 300px; overflow-y: auto; margin-top: 6px; overscroll-behavior: contain; }
+.sp-list { margin-top: 6px; }
+button.sp-usual { width: 100%; display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 10px 12px; margin-bottom: 10px; border-radius: 16px;
+  background: var(--gold-soft); color: var(--ink); border: 1.5px solid color-mix(in srgb, var(--gold) 45%, transparent); text-align: left; font-weight: inherit; }
+button.sp-usual .sp-ico { background: var(--card); }
 button.sp-opt { width: 100%; display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 8px 6px; background: none; color: var(--ink); border: 0;
   border-bottom: 1px solid var(--line); border-radius: 0; text-align: left; font-weight: 400; justify-content: flex-start; }
 button.sp-opt:last-child { border-bottom: 0; }
@@ -378,7 +425,7 @@ button.bs-toggle { width: 100%; background: none; color: var(--ink-2); border: 0
 button.bs-toggle:hover { background: none; }
 button.bs-toggle:active { transform: none; }
 .bs .section { padding: 16px; }
-.bk-segfull .seg { display: flex; flex-wrap: nowrap; width: 100%; }
-.bk-segfull .seg button { flex: 1 1 auto; padding: 6px 4px; min-width: 0; min-height: 44px; }
+.bk-segfull .seg { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); width: 100%; gap: 4px; }
+.bk-segfull .seg button { padding: 6px 8px; min-width: 0; min-height: 44px; }
 .bk-top .seg button { padding: 6px 8px; }
 `;

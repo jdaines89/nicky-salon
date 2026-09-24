@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Package, Pencil } from "lucide-react";
+import { Check, ChevronDown, Package, Pencil } from "lucide-react";
 import { useSalon } from "@/components/data";
 import { rand, Sheet, useToast } from "@/components/ui";
 import { ServicesPackageBuilder } from "@/components/services-package-builder";
@@ -42,6 +42,7 @@ export default function Services() {
   const [editing, setEditing] = useState(false);
   const [toast, say] = useToast();
   const [edit, setEdit] = useState<Service | null>(null);
+  const [openCat, setOpenCat] = useState<string | null>(null);
 
   // Retired services stay in the table (past bookings snapshot their names and
   // prices) but never appear on the price list.
@@ -95,16 +96,32 @@ export default function Services() {
         )}
       </div>
 
-      <div className="grid2">
-        {categories.map((cat) => (
-          <div key={cat} className="card">
-            <h2>{cat}</h2>
-            <div className="list nw">
-              {grouped.get(cat)!.map((s) => <ServiceRow key={s.id} s={s} editing={editing} onEdit={setEdit} />)}
-            </div>
-          </div>
-        ))}
-      </div>
+      {categories.length > 0 && (
+        <div className="sp-cats" style={{ marginTop: 0, marginBottom: 14 }}>
+          {categories.map((cat) => {
+            const list = grouped.get(cat)!;
+            const isOpen = openCat === cat || categories.length === 1;
+            return (
+              <div key={cat} className={`sp-cat${isOpen ? " open" : ""}`}>
+                <button type="button" className="sp-cat-h" aria-expanded={isOpen} onClick={() => setOpenCat(isOpen ? null : cat)}>
+                  <span className="grow">
+                    <span className="sp-name">{cat}</span>
+                    <span className="small muted">{list.length} {list.length === 1 ? "service" : "services"} · from {rand(Math.min(...list.map((s) => Number(s.price))))}</span>
+                  </span>
+                  <ChevronDown size={20} className="sp-chev" />
+                </button>
+                {isOpen && (
+                  <div className="sp-cat-b">
+                    <div className="list nw">
+                      {list.map((s) => <ServiceRow key={s.id} s={s} editing={editing} onEdit={setEdit} />)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {editing && (
         <AddServiceForm categories={categories} onSaved={async (msg) => { await reload(); say(msg); }} onError={say} />
