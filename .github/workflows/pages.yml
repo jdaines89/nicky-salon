@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NEXT_PUBLIC_SUPABASE_URL: https://afwezsbaccehhukrqowu.supabase.co
-      NEXT_PUBLIC_SUPABASE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_SUPABASE_KEY: sb_publishable_mfCAYjBe4xfF_NOajRfiDQ_noTHDqLt
       # The site lives at /<repo name>/, so it follows a rename.
       NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
     steps:

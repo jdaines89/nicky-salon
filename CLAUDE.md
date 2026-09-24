@@ -56,7 +56,7 @@ Live project `nicky-beauty-nails` (ref afwezsbaccehhukrqowu). The dev project
 is usually paused (free plan allows two active projects), which is why
 `db:test` runs on a local Postgres instead.
 
-The migrations are not yet applied to live. `..._baseline.sql` matches live
-exactly; `..._staff_login.sql` is safe to apply any time; `..._security.sql`
-switches RLS on and **breaks the Streamlit app** the moment it is applied, so
-it goes on at cutover only, with the owner's go-ahead.
+Cutover happened 2026-09-24. `..._baseline.sql` matches live
+exactly and was never run there (the schema predates it); `..._staff_login.sql`
+and `..._security.sql` were applied at cutover, when the Streamlit app was
+retired. Staff are added only by inviting them from the Supabase dashboard.
