@@ -28,6 +28,15 @@
 
 /* Looks she can choose under More. Each one only swaps tokens, so every
    screen follows without its own dark or light rules. */
+:root[data-look="stage"] {
+  --paper: #FBF6F1; --paper-2: #F3E9E2; --ink: #1F0E14; --ink-2: #4A3239; --ink-soft: #8C7479; --ink-faint: #C9B8BB;
+  --teal: #7A1F3D; --teal-2: #9B2D50; --teal-3: #B8506F; --teal-soft: #F6E3E8; --teal-mist: #FCF1F3;
+  --gold: #C9953F; --gold-2: #A8762A; --gold-soft: #F8ECD6; --gold-ink: #6E4B16; --gold-hi: #E3B563;
+  --line: #EFE2DC; --line-2: #E4D2CB; --rose: #D07A6B; --rose-soft: #FAEAE5; --mono-ink: #F2CD7E;
+  --hero-a: #A8345A; --hero-c: #2A0812; --hero-gold: #F2CD7E; --busy: #E3BCC7;
+  --header-bg: rgba(251, 246, 241, 0.86); --toast-bg: #2A0812;
+  --serif: "Bodoni Moda Variable", "Fraunces Variable", Georgia, serif;
+}
 :root[data-look="sage"] {
   --paper: #F2F1EA; --paper-2: #E7E6DC; --ink: #1E241F; --ink-2: #444C45; --ink-soft: #7D857E; --ink-faint: #B4BAB2;
   --teal: #3F5A48; --teal-2: #5B7A63; --teal-3: #7A9A80; --teal-soft: #E3EBE1; --teal-mist: #F0F4EE;
@@ -358,7 +367,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .page-head > button, .page-head > .btn { margin-bottom: 16px; }
 
 /* Look picker */
-.looks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.looks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 button.look { flex-direction: column; gap: 2px; min-height: 0; padding: 10px 4px 8px; border-radius: 18px; background: var(--card); color: var(--ink); border: 1.5px solid var(--line); font-weight: 400; }
 button.look:hover { background: var(--card); border-color: var(--line-2); }
 button.look.on { border-color: var(--teal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 18%, transparent); }
@@ -370,4 +379,49 @@ button.look.on { border-color: var(--teal); box-shadow: 0 0 0 3px color-mix(in s
 .look-note { font-size: 11px; color: var(--ink-soft); line-height: 1.25; text-align: center; }
 .more-sec { margin-top: 18px; }
 
-.menu:has(.looks) { width: 360px; }
+.menu:has(.looks) { width: 340px; }
+
+/* Stage: her look by default. A spotlight on the hero card and a row of
+   marquee bulbs along its top edge; the one theatrical flourish per screen. */
+:root[data-look="stage"] h1 { font-weight: 500; letter-spacing: -0.015em; }
+:root[data-look="stage"] h1 em { font-weight: 400; }
+:root[data-look="stage"] .hero:not(.quiet) {
+  background:
+    radial-gradient(55% 85% at 28% -12%, rgba(255, 228, 184, 0.30), transparent 62%),
+    radial-gradient(120% 140% at 100% 0%, var(--hero-a) 0%, var(--teal) 52%, var(--hero-c) 100%);
+  padding-top: 26px;
+}
+:root[data-look="stage"] .hero:not(.quiet)::before {
+  content: ""; position: absolute; left: 18px; right: 18px; top: 10px; height: 6px; pointer-events: none;
+  background: radial-gradient(circle, var(--hero-gold) 0 2px, transparent 2.6px) 0 50% / 14px 6px repeat-x;
+  filter: drop-shadow(0 0 3px rgba(242, 205, 126, 0.8)); animation: bulbs 1.6s steps(2, jump-none) infinite alternate;
+}
+@keyframes bulbs { from { opacity: 0.55; } to { opacity: 1; } }
+:root[data-look="stage"] .hero-time, :root[data-look="stage"] .wrap-big { font-style: italic; }
+
+/* Curtain: once a day, the velvet parts on her name. Tap skips it. */
+.curtain { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; pointer-events: auto; cursor: pointer; }
+.curtain .panel { position: absolute; top: 0; bottom: 0; width: 51%;
+  background: repeating-linear-gradient(90deg, rgba(0,0,0,0.22) 0 6px, rgba(255,255,255,0.05) 14px, rgba(0,0,0,0.18) 26px), linear-gradient(var(--hero-a), var(--teal) 45%, var(--hero-c));
+  transition: transform 1.1s cubic-bezier(0.7, 0, 0.2, 1); box-shadow: 0 0 40px rgba(0,0,0,0.5); }
+.curtain .panel.l { left: 0; transform-origin: left; }
+.curtain .panel.r { right: 0; }
+.curtain.open .panel.l { transform: translateX(-102%) skewY(-2deg); }
+.curtain.open .panel.r { transform: translateX(102%) skewY(2deg); }
+.curtain .valance { position: absolute; top: 0; left: 0; right: 0; height: 64px; z-index: 2; transition: transform 0.9s 0.25s var(--ease);
+  background: radial-gradient(40px 30px at 50% 0, var(--hero-c) 98%, transparent) 0 24px / 80px 40px repeat-x, linear-gradient(var(--hero-c), var(--teal));
+  border-bottom: 2px solid var(--hero-gold); }
+.curtain.open .valance { transform: translateY(-110%); }
+.curtain .bill { position: relative; z-index: 3; text-align: center; color: var(--hero-gold); transition: opacity 0.4s, transform 0.6s var(--ease); }
+.curtain.open .bill { opacity: 0; transform: scale(1.06); }
+.curtain .bill .who { font-family: var(--serif); font-style: italic; font-size: 64px; line-height: 1; text-shadow: 0 0 24px rgba(242,205,126,0.45); }
+.curtain .bill .what { font-size: 11px; font-weight: 700; letter-spacing: 0.32em; margin-top: 10px; }
+.curtain .bill .when { font-size: 14px; margin-top: 18px; color: rgba(255,255,255,0.8); }
+
+/* Applause: a short burst of gold when a booking is made. */
+.applause { position: fixed; left: 50%; bottom: 120px; z-index: 90; pointer-events: none; }
+.applause i { position: absolute; width: 8px; height: 12px; border-radius: 2px; opacity: 0; animation: burst 1.1s var(--ease) forwards; }
+@keyframes burst {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0); }
+  100% { opacity: 0; transform: translate(var(--x), var(--y)) rotate(var(--r)); }
+}

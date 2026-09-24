@@ -3,18 +3,21 @@ import type { Metadata, Viewport } from "next";
 import "@fontsource-variable/fraunces/full.css";
 import "@fontsource-variable/fraunces/full-italic.css";
 import "@fontsource-variable/plus-jakarta-sans";
+import "@fontsource-variable/bodoni-moda";
+import "@fontsource-variable/bodoni-moda/wght-italic.css";
 import "./globals.css";
 import { AuthGate } from "@/components/auth-gate";
 import { Header } from "@/components/header";
 import { DataProvider } from "@/components/data";
 import { LOOK_BOOT } from "@/components/look";
+import { Applause, Curtain } from "@/components/theatre";
 
 export const metadata: Metadata = {
   title: "Nicky — Beauty & Nails",
   description: "Bookings, clients and takings for Nicky's Beauty & Nails.",
 };
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#F5F1EA", viewportFit: "cover" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#FBF6F1", viewportFit: "cover" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -23,6 +26,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: LOOK_BOOT }} />
       </head>
       <body>
+        <Curtain />
+        <Applause />
         <Header />
         <main className="shell">
           <AuthGate>

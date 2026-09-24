@@ -10,6 +10,7 @@ import { Check } from "lucide-react";
  * never flashes cream on the way in.
  */
 export const LOOKS = [
+  { id: "stage", name: "Stage", note: "Velvet and gold", swatch: ["#FBF6F1", "#7A1F3D", "#C9953F"] },
   { id: "classic", name: "Classic", note: "Teal and gold", swatch: ["#F5F1EA", "#0F3B38", "#BD9155"] },
   { id: "sage", name: "Sage", note: "Soft and earthy", swatch: ["#F2F1EA", "#3F5A48", "#C4876A"] },
   { id: "blush", name: "Blush", note: "Plum and rose", swatch: ["#F8F1EE", "#6B3A4C", "#C79A6B"] },
@@ -18,10 +19,11 @@ export const LOOKS = [
 export type LookId = (typeof LOOKS)[number]["id"];
 
 export const LOOK_KEY = "nicky-look";
-const THEME_COLOR: Record<LookId, string> = { classic: "#F5F1EA", sage: "#F2F1EA", blush: "#F8F1EE", midnight: "#121218" };
+export const DEFAULT_LOOK: LookId = "stage";
+const THEME_COLOR: Record<LookId, string> = { stage: "#FBF6F1", classic: "#F5F1EA", sage: "#F2F1EA", blush: "#F8F1EE", midnight: "#121218" };
 
 /** Runs inline in <head>: keep it tiny and dependency-free. */
-export const LOOK_BOOT = `try{var l=localStorage.getItem("${LOOK_KEY}");if(l&&l!=="classic")document.documentElement.setAttribute("data-look",l)}catch(e){}`;
+export const LOOK_BOOT = `(function(){var l="stage";try{l=localStorage.getItem("${LOOK_KEY}")||l}catch(e){}if(l!=="classic")document.documentElement.setAttribute("data-look",l)})()`;
 
 function apply(id: LookId) {
   const root = document.documentElement;
@@ -31,12 +33,12 @@ function apply(id: LookId) {
 }
 
 export function LookPicker() {
-  const [look, setLook] = useState<LookId>("classic");
+  const [look, setLook] = useState<LookId>(DEFAULT_LOOK);
   useEffect(() => {
     try {
       const saved = localStorage.getItem(LOOK_KEY) as LookId | null;
       if (saved && LOOKS.some((l) => l.id === saved)) setLook(saved);
-    } catch { /* private window: stay on Classic */ }
+    } catch { /* private window: keep the default */ }
   }, []);
   function pick(id: LookId) {
     setLook(id);

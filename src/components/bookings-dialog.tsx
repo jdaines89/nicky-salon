@@ -9,6 +9,7 @@ import {
   ClientPicker, endTime, lineFromOpt, phoneProblem, resolveClient, serviceOptions,
   ServicePicker, useFirstVisits, type ClientChoice, type Line,
 } from "@/components/bookings-shared";
+import { applaud } from "@/components/theatre";
 import { DayGlance, DayStrip, DurationStepper, TimeSlots, WHEN_CSS } from "@/components/when-picker";
 import { addBooking, addClient, deleteBooking, updateBooking, type PickedService } from "@/lib/db";
 import {
@@ -163,7 +164,8 @@ export function BookingSheet({ booking, draft, onClose, onDone }: {
         if (!c) throw new Error("No client chosen.");
         await addBooking({ client_id: c.id, ...fields }, payload);
         await reload();
-        onDone(`Booking saved for ${c.name}.`);
+        applaud();
+        onDone(`${c.name} is on the lineup for ${fmtWeekdayDayMonth(date)} at ${time}.`);
       }
       onClose();
     } catch (e) {

@@ -4,6 +4,7 @@ import { AlertTriangle, ChevronRight, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useSalon } from "@/components/data";
 import { rand, Seg, Sheet } from "@/components/ui";
+import { applaud } from "@/components/theatre";
 import { DayStrip, DurationStepper, TimeSlots, WHEN_CSS } from "@/components/when-picker";
 import {
   ClientPicker, phoneProblem, resolveClient, serviceOptions, ServicePicker,
@@ -64,6 +65,7 @@ export function RecurringSheet({ onClose, onDone }: { onClose: () => void; onDon
         status, notes: notes.trim() || null,
       }, payload);
       await reload();
+      applaud();
       onDone(`Recurring booking created: ${created.length} visits scheduled for ${client.name}.`);
       onClose();
     } catch (e) {

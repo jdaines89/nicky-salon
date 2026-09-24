@@ -11,7 +11,7 @@ import type { BookingWithServices, Client, Service } from "@/lib/types";
 // ---------------------------------------------------------------------------
 
 export const STATUS_COLOR: Record<string, string> = {
-  confirmed: "#2E7A73", pending: "#BD9155", cancelled: "#9AA3A1", "no-show": "#B5412C", new: "#C47A62",
+  confirmed: "var(--teal-3)", pending: "var(--gold)", cancelled: "#9AA3A1", "no-show": "var(--danger)", new: "var(--rose)",
 };
 
 export type FvMap = Map<string | null, string>;

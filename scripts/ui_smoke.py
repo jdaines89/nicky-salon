@@ -92,7 +92,8 @@ with sync_playwright() as p:
     b = p.chromium.launch(executable_path=os.environ.get("CHROMIUM") or None)
     for label, vp in [("phone", {"width": 375, "height": 812}), ("desktop", {"width": 1280, "height": 900})]:
         ctx = b.new_context(viewport=vp)
-        ctx.add_init_script(f"localStorage.setItem('sb-example-auth-token', {json.dumps(json.dumps(SESSION))})")
+        # The once-a-day curtain would cover every screenshot; mark it seen.
+        ctx.add_init_script(f"localStorage.setItem('sb-example-auth-token', {json.dumps(json.dumps(SESSION))}); localStorage.setItem('nicky-curtain', new Intl.DateTimeFormat('en-CA', {{timeZone: 'Africa/Johannesburg'}}).format(new Date()))")
         ctx.route("https://example.supabase.co/**", handle)
         ctx.route("https://fonts.googleapis.com/**", lambda r, q: r.fulfill(status=200, body=""))
         for r in ROUTES:
@@ -122,7 +123,9 @@ with sync_playwright() as p:
         page.screenshot(path=os.path.join(SHOTS, f"{label}_sheet_2_filled.png"))
         page.evaluate("document.querySelector('.sheet').scrollTo(0, 99999)"); page.wait_for_timeout(300)
         page.screenshot(path=os.path.join(SHOTS, f"{label}_sheet_3_bottom.png"))
-        page.locator("button.bs-go").click(); page.wait_for_timeout(1200)
+        page.locator("button.bs-go").click(); page.wait_for_timeout(250)
+        page.screenshot(path=os.path.join(SHOTS, f"{label}_sheet_applause.png"))
+        page.wait_for_timeout(950)
         page.screenshot(path=os.path.join(SHOTS, f"{label}_sheet_4_saved.png"))
         if page.locator(".sheet").count(): errs.append("booking sheet still open after Book")
         if errs: failures.append((label, "booking flow", errs))
@@ -130,9 +133,19 @@ with sync_playwright() as p:
         page.close()
         # Each look she can pick, on the two screens she sees most.
         if label == "phone":
-            for look in ["sage", "blush", "midnight"]:
+            # The curtain itself, caught mid-open.
+            cctx = b.new_context(viewport=vp)
+            cctx.add_init_script(f"localStorage.setItem('sb-example-auth-token', {json.dumps(json.dumps(SESSION))})")
+            cctx.route("https://example.supabase.co/**", handle)
+            page = cctx.new_page()
+            page.goto(f"http://127.0.0.1:{srv.server_address[1]}/"); page.wait_for_timeout(450)
+            page.screenshot(path=os.path.join(SHOTS, "curtain_closed.png"))
+            page.wait_for_timeout(700)
+            page.screenshot(path=os.path.join(SHOTS, "curtain_opening.png"))
+            cctx.close()
+            for look in ["classic", "sage", "blush", "midnight"]:
                 lctx = b.new_context(viewport=vp)
-                lctx.add_init_script(f"localStorage.setItem('sb-example-auth-token', {json.dumps(json.dumps(SESSION))}); localStorage.setItem('nicky-look', '{look}')")
+                lctx.add_init_script(f"localStorage.setItem('sb-example-auth-token', {json.dumps(json.dumps(SESSION))}); localStorage.setItem('nicky-look', '{look}'); localStorage.setItem('nicky-curtain', new Intl.DateTimeFormat('en-CA', {{timeZone: 'Africa/Johannesburg'}}).format(new Date()))")
                 lctx.route("https://example.supabase.co/**", handle)
                 for r, tag in [("/", "today"), ("/bookings/?new=1", "sheet")]:
                     page = lctx.new_page(); errs = []

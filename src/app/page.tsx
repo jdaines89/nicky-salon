@@ -90,7 +90,7 @@ export default function Today() {
       {next ? (
         <Link href={`/bookings/?day=${next.date}&open=${next.id}`} className="hero">
           <div className="hero-top">
-            <span className="hero-tag">{nextIn != null && nextIn <= 0 ? "In the chair now" : "Up next"}</span>
+            <span className="hero-tag">{nextIn != null && nextIn <= 0 ? "On stage now" : "Next on stage"}</span>
             <span className="hero-in">{nextIn != null && nextIn > 0 ? (nextIn < 60 ? `in ${nextIn} min` : `in ${Math.floor(nextIn / 60)} h ${nextIn % 60 ? `${nextIn % 60} min` : ""}`) : `until ${hhmm(toMinutes(next.time) + (next.duration_minutes || 30))}`}</span>
           </div>
           <div className="hero-main">
@@ -135,7 +135,7 @@ export default function Today() {
             <div className="grow">
               <div className="small muted">Earned in {monthName(today)}</div>
               <div className="big-money">{rand(confirmedRev)}</div>
-              <div className={`small ${deltaPct == null ? "muted" : deltaPct >= 0 ? "up" : "down"}`}>
+              <div className="small muted">
                 {deltaPct == null ? "Nothing last month to compare" : <>{deltaPct >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />} {deltaPct >= 0 ? "+" : ""}{deltaPct.toFixed(0)}% on last month</>}
               </div>
             </div>
@@ -175,7 +175,7 @@ export default function Today() {
       )}
 
       <div className="card">
-        <div className="card-head"><h2><CalendarDays size={18} />Today</h2><Link href={`/bookings/?day=${today}`} className="see-all">Diary <ChevronRight size={14} /></Link></div>
+        <div className="card-head"><h2><CalendarDays size={18} />Today&apos;s lineup</h2><Link href={`/bookings/?day=${today}`} className="see-all">Diary <ChevronRight size={14} /></Link></div>
         {!todayAppts.length && <Empty icon={CalendarHeart} title="Nothing booked today">Tap the gold + to add someone.</Empty>}
         <div className="tl">
           {todayAppts.map((b) => {
@@ -277,12 +277,12 @@ function DayWrap({ today, live, bookings }: { today: string; live: BookingWithSe
   const pending = live.length - confirmed.length;
   const seen = [...new Set(live.map((b) => b.client_id).filter((id): id is string => !!id))];
   const rebooked = seen.filter((id) => bookings.some((b) => b.client_id === id && b.date > today && b.status !== "cancelled")).length;
-  const line = rebooked && rebooked === seen.length ? "Every one of them is booked to come back."
-    : rebooked ? `${rebooked} of ${seen.length} already booked to come back.`
+  const line = rebooked && rebooked === seen.length ? "Encore: every one of them is booked to come back."
+    : rebooked ? `Encore: ${rebooked} of ${seen.length} already booked to come back.`
     : "Nobody's booked their next visit yet. Worth a message tomorrow.";
   return (
     <div className="hero wrap">
-      <div className="hero-top"><span className="hero-tag">That&apos;s a wrap</span><span className="hero-in">{live.length} {live.length === 1 ? "client" : "clients"}</span></div>
+      <div className="hero-top"><span className="hero-tag">Curtain call</span><span className="hero-in">{live.length} {live.length === 1 ? "client" : "clients"}</span></div>
       <button type="button" className={`wrap-money${reveal ? " on" : ""}`} onClick={() => setReveal(!reveal)} aria-label={reveal ? "Hide today's takings" : "Show today's takings"}>
         <span className="wrap-big">{rand(earned)}</span>
         <span className="wrap-sub">{reveal ? `earned today${tips ? ` · plus ${rand(tips)} in tips` : ""}` : "tap to see today's takings"}</span>
