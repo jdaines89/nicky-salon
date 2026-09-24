@@ -118,6 +118,10 @@ textarea { min-height: 72px; resize: vertical; }
 }
 .list > .item:last-child { border-bottom: 0; }
 button.item:hover { background: var(--teal-soft); }
+.list > .item { flex-wrap: wrap; }
+/* The text takes the row; buttons drop underneath it on a narrow phone rather
+   than squeezing a client's name into one word per line. */
+.list > .item > .grow { flex: 1 1 170px; }
 .item .title { font-weight: 600; }
 .item .meta { font-size: 13px; color: var(--ink-soft); }
 .avatar {

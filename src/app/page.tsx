@@ -25,7 +25,7 @@ export default function Today() {
   const prevMonthPrefix = addDays(`${monthPrefix}-01`, -1).slice(0, 7);
 
   const todayAppts = bookings.filter((b) => b.date === today).sort((a, b) => a.time.localeCompare(b.time));
-  const weekStart = addDays(today, -((weekday(today) + 6) % 7));
+  const weekStart = addDays(today, -weekday(today));
   const weekEnd = addDays(weekStart, 6);
   const weekAppts = bookings.filter((b) => b.date >= weekStart && b.date <= weekEnd && b.status !== "cancelled");
   const month = bookings.filter((b) => b.date.startsWith(monthPrefix));
