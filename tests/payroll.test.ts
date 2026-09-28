@@ -138,7 +138,7 @@ describe("rows", () => {
     const rows = rowsFor([bk("b1", "c1", { services: [svc("Gel Overlay", 300), svc("Brow Wax", 90)] })]);
     expect(rows).toEqual([{
       date: "2026-08-05", client: "Thandi", services: "Gel Overlay, Brow Wax",
-      serviceCount: 2, discount: 0, amount: 390, bookingId: "b1",
+      houseCall: false, payment: "Not recorded", serviceCount: 2, discount: 0, amount: 390, bookingId: "b1",
     }]);
   });
 
@@ -149,9 +149,12 @@ describe("rows", () => {
     expect(totals(rows).services).toBe(2);
   });
 
-  it("a house call says so", () => {
-    const b = { ...bk("b1"), house_call: true };
-    expect(rowsFor([b])[0].services).toBe("Gel Overlay (house call)");
+  it("a house call and the payment method have their own columns", () => {
+    const b = { ...bk("b1"), house_call: true, payment_method: "card" };
+    expect([rowsFor([b])[0].houseCall, rowsFor([b])[0].payment]).toEqual([true, "Card"]);
+    const v = { ...bk("b2"), payment_method: "voucher", voucher_code: "GV-0412" };
+    expect(rowsFor([v])[0].payment).toBe("Voucher GV-0412");
+    expect(lines(rowsToCsv(rowsFor([b])))[1]).toBe("2026-08-05,Thandi,Gel Overlay,Yes,Card,,300.00");
   });
 
   it("the discount has its own column and the amount is after it", () => {
@@ -214,14 +217,14 @@ describe("files", () => {
       bk("b2", "c2", { date: "2026-08-09", services: [svc("Pedi", 250)] }),
     ]);
     const ls = lines(rowsToCsv(rows));
-    expect(ls[0]).toBe("Date,Client,Services,Discount (R),Amount (R)");
-    expect(ls[1]).toBe('2026-08-05,Thandi,"Gel Overlay, Brow Wax",60.00,330.00');
-    expect(ls[2]).toBe("2026-08-09,Lerato,Pedi,,250.00");
-    expect(ls[3]).toBe(",,TOTAL,60.00,580.00");
+    expect(ls[0]).toBe("Date,Client,Services,House call,Payment,Discount (R),Amount (R)");
+    expect(ls[1]).toBe('2026-08-05,Thandi,"Gel Overlay, Brow Wax",,Not recorded,60.00,330.00');
+    expect(ls[2]).toBe("2026-08-09,Lerato,Pedi,,Not recorded,,250.00");
+    expect(ls[3]).toBe(",,,,TOTAL,60.00,580.00");
   });
 
   it("CSV of an empty month still has a header and a zero total", () => {
-    expect(lines(rowsToCsv([]))).toEqual(["Date,Client,Services,Discount (R),Amount (R)", ",,TOTAL,0.00,0.00"]);
+    expect(lines(rowsToCsv([]))).toEqual(["Date,Client,Services,House call,Payment,Discount (R),Amount (R)", ",,,,TOTAL,0.00,0.00"]);
   });
 
   it("xlsx is one sheet with live total formulas", async () => {
@@ -237,8 +240,8 @@ describe("files", () => {
     // Live formulas, not baked-in numbers: she can delete a line she was told
     // to leave off and the total she is paid on follows her edit.
     const sheet = await read("xl/worksheets/sheet1.xml");
-    expect(sheet).toContain("SUM(D5:D6)");
-    expect(sheet).toContain("SUM(E5:E6)");
+    expect(sheet).toContain("SUM(F5:F6)");
+    expect(sheet).toContain("SUM(G5:G6)");
     expect(await read("xl/sharedStrings.xml")).toContain("August 2026");
   });
 
