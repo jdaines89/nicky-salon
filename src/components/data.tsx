@@ -2,12 +2,17 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { loadAll, type SalonData } from "@/lib/db";
-import { todaySa } from "@/lib/salon";
-import type { Client } from "@/lib/types";
+import { lockAsBooking, todaySa } from "@/lib/salon";
+import type { BookingWithServices, Client } from "@/lib/types";
 
 interface Ctx extends SalonData {
   today: string;
   clientById: Map<string, Client>;
+  /**
+   * Bookings plus blocked-out time, for the free-time maths only (clashes,
+   * gaps, offered times). Never for money, visits or counts.
+   */
+  busy: BookingWithServices[];
   /** Re-read everything after a write. Cheap: a salon's data is small. */
   reload: () => Promise<void>;
 }
@@ -48,6 +53,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     ...data,
     today: todaySa(),
     clientById: new Map(data.clients.map((c) => [c.id, c])),
+    busy: [...data.bookings, ...data.locks.map(lockAsBooking)],
     reload,
   }, [data, reload]);
 

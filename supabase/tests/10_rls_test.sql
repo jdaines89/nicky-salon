@@ -38,7 +38,7 @@ select pg_temp.check((select not public from storage.buckets where id = 'client-
 do $$ begin
   insert into public.bookings (date, time, payment_method) values (current_date, '10:00', 'cheque');
   raise exception 'FAILED: bad payment_method accepted';
-exception when check_violation then raise notice 'ok: payment_method only takes cash/card/transfer';
+exception when check_violation then raise notice 'ok: payment_method only takes cash/card/transfer/voucher';
 end $$;
 
 -- ------------------------------------------------------------------
@@ -79,6 +79,7 @@ select pg_temp.refused('select 1 from public.clients',          'anon cannot rea
 select pg_temp.refused('select 1 from public.bookings',         'anon cannot read bookings');
 select pg_temp.refused('select 1 from public.booking_services', 'anon cannot read booking_services');
 select pg_temp.refused('select 1 from public.services',         'anon cannot read services');
+select pg_temp.refused('select 1 from public.time_locks',       'anon cannot read blocked time');
 select pg_temp.refused('select 1 from public.recurring_series', 'anon cannot read recurring_series');
 select pg_temp.refused('select 1 from public.client_photos',    'anon cannot read client_photos');
 select pg_temp.refused('select 1 from public.staff',            'anon cannot read staff');
@@ -107,6 +108,7 @@ select pg_temp.check((select count(*) from public.clients) = 0,          'strang
 select pg_temp.check((select count(*) from public.bookings) = 0,         'stranger sees no bookings');
 select pg_temp.check((select count(*) from public.booking_services) = 0, 'stranger sees no booking services');
 select pg_temp.check((select count(*) from public.services) = 0,         'stranger sees no services');
+select pg_temp.check((select count(*) from public.time_locks) = 0,       'stranger sees no blocked time');
 select pg_temp.check((select count(*) from public.staff) = 0,            'stranger sees no staff list');
 select pg_temp.check((select count(*) from storage.objects) = 0,         'stranger sees no photos');
 select pg_temp.refused($$insert into public.clients (name) values ('Gatecrasher')$$, 'stranger cannot add a client');
@@ -167,6 +169,17 @@ select pg_temp.refused($$insert into public.staff (user_id, email) values ('0000
   'staff cannot add staff by hand (invites only)');
 select pg_temp.refused($$delete from public.staff$$, 'staff cannot remove staff');
 select pg_temp.refused('select 1 from snapshots.rows', 'staff cannot read snapshots through the API');
+-- 2026-09-28 additions: blocked time, quantities, vouchers, late fees, promotions.
+insert into public.time_locks (id, date, time, duration_minutes, label)
+  values ('77777777-7777-7777-7777-777777777777', current_date, '13:00', 45, 'Lunch');
+select pg_temp.check((select count(*) from public.time_locks) = 1, 'staff blocks out time');
+update public.booking_services set quantity = 5, price_at_time = 50 where service_name = 'Gel overlay';
+update public.bookings set payment_method = 'voucher', voucher_code = 'XMAS-01', voucher_value = 300,
+  late_cancel = true, late_fee = 90, late_fee_status = 'owed' where id = '33333333-3333-3333-3333-333333333333';
+update public.services set promo_start = current_date, promo_end = current_date + 30 where id = '22222222-2222-2222-2222-222222222222';
+select pg_temp.check((select voucher_code from public.bookings where id = '33333333-3333-3333-3333-333333333333') = 'XMAS-01',
+  'staff records a voucher and a late fee');
+delete from public.time_locks where id = '77777777-7777-7777-7777-777777777777';
 reset role;
 
 -- The helper (invited via the update path) has the same access.
@@ -186,7 +199,14 @@ select pg_temp.check((select count(*) from pg_policies where schemaname = 'stora
 select pg_temp.check((select bool_and(relrowsecurity and relforcerowsecurity) from pg_class
   where oid in ('public.clients'::regclass, 'public.services'::regclass, 'public.recurring_series'::regclass,
                 'public.bookings'::regclass, 'public.booking_services'::regclass,
-                'public.client_photos'::regclass, 'public.staff'::regclass)), 'RLS enabled and forced on all seven tables');
+                'public.client_photos'::regclass, 'public.staff'::regclass, 'public.time_locks'::regclass)),
+  'RLS enabled and forced on all eight tables');
+do $$ begin
+  insert into public.booking_services (booking_id, service_name, price_at_time, quantity)
+    values ('33333333-3333-3333-3333-333333333333', 'x', 1, 0);
+  raise exception 'FAILED: quantity 0 accepted';
+exception when check_violation then raise notice 'ok: quantity is at least 1';
+end $$;
 select pg_temp.check(snapshots.capture() like 'captured 6 rows%', 'nightly snapshot still captures every salon row');
 
 -- Deleting an auth account removes its staff row.

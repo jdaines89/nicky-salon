@@ -7,7 +7,7 @@ import { rand, Seg, Sheet } from "@/components/ui";
 import { applaud } from "@/components/theatre";
 import { DayStrip, DurationStepper, TimeSlots, WHEN_CSS } from "@/components/when-picker";
 import {
-  ClientPicker, phoneProblem, resolveClient, serviceOptions, ServicePicker,
+  ClientPicker, lineMinutes, lineTotal, phoneProblem, resolveClient, serviceOptions, ServicePicker,
   type ClientChoice, type Line,
 } from "@/components/bookings-shared";
 import { addClient, cancelSeries, createSeries, type PickedService } from "@/lib/db";
@@ -18,10 +18,10 @@ const FREQS: ["7" | "14" | "28", string][] = [["7", freqLabel(7)], ["14", freqLa
 
 /** A standing appointment: one series, every visit booked up front. */
 export function RecurringSheet({ onClose, onDone }: { onClose: () => void; onDone: (msg: string) => void }) {
-  const { clients, services, bookings, clientById, today, reload } = useSalon();
-  const opts = useMemo(() => serviceOptions(services), [services]);
+  const { clients, services, bookings, busy: busyTimes, clientById, today, reload } = useSalon();
   const [choice, setChoice] = useState<ClientChoice>({ kind: "none" });
   const [start, setStart] = useState(today);
+  const opts = useMemo(() => serviceOptions(services, start), [services, start]);
   const [time, setTime] = useState<string | null>(null);
   const [lines, setLines] = useState<Line[]>([]);
   const [durTouched, setDurTouched] = useState(false);
@@ -35,15 +35,15 @@ export function RecurringSheet({ onClose, onDone }: { onClose: () => void; onDon
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const suggested = lines.reduce((s, l) => s + l.duration, 0) || 30;
+  const suggested = lines.reduce((s, l) => s + lineMinutes(l), 0) || 30;
   const duration = durTouched ? parseInt(durText, 10) || 0 : suggested;
-  const perVisit = lines.reduce((s, l) => s + l.price, 0);
+  const perVisit = lines.reduce((s, l) => s + lineTotal(l), 0);
   const freqDays = Number(freq);
   const until = endDate ?? (start ? addDays(start, 90) : today);
   const nVisits = Math.min(24, Math.max(1, parseInt(count, 10) || 1));
   const dates = start ? computeRecurringDates(start, freqDays, endType, nVisits, until) : [];
   const timeOk = time != null && /^\d{2}:\d{2}$/.test(time);
-  const clashes = timeOk ? dates.filter((d) => findCollision(bookings, d, time!, duration || 30)) : [];
+  const clashes = timeOk ? dates.filter((d) => findCollision(busyTimes, d, time!, duration || 30)) : [];
 
   async function create() {
     setError(null);
@@ -58,7 +58,7 @@ export function RecurringSheet({ onClose, onDone }: { onClose: () => void; onDon
     try {
       if (!client && choice.kind === "new") client = await addClient({ name: choice.name.trim(), phone: choice.phone.trim() || null });
       if (!client) throw new Error("No client chosen.");
-      const payload: PickedService[] = lines.map((l) => ({ service_id: l.service_id, service_name: l.name, price: l.price }));
+      const payload: PickedService[] = lines.map((l) => ({ service_id: l.service_id, service_name: l.name, price: lineTotal(l), quantity: l.qty }));
       const created = await createSeries({
         client_id: client.id, start_date: start, time: time!, duration_minutes: duration, freq_days: freqDays, end_type: endType,
         end_count: endType === "count" ? nVisits : null, end_date: endType === "until" ? until : null,
@@ -95,7 +95,7 @@ export function RecurringSheet({ onClose, onDone }: { onClose: () => void; onDon
             <DurationStepper value={duration} onChange={(n) => { setDurTouched(true); setDurText(String(n)); }}
               auto={!durTouched || duration === suggested} onAuto={() => setDurTouched(false)} autoValue={suggested} />
           </div>
-          <TimeSlots date={start} time={time} onChange={setTime} duration={duration || 30} bookings={bookings} today={today} />
+          <TimeSlots date={start} time={time} onChange={setTime} duration={duration || 30} bookings={busyTimes} today={today} />
         </div>
         <div className="stack" style={{ gap: 6 }}>
           <span className="bk-label">How often</span>
@@ -119,7 +119,7 @@ export function RecurringSheet({ onClose, onDone }: { onClose: () => void; onDon
         </div>
         {clashes.length > 0 && (
           <div className="bk-clash" role="alert">
-            <strong><AlertTriangle size={18} /> {clashes.length} of these overlap another booking</strong>
+            <strong><AlertTriangle size={18} /> {clashes.length} of these overlap another booking or blocked time</strong>
             {clashes.map(fmtDayMonth).join(", ")} at {time}. They&apos;ll still be booked; move those visits afterwards if needed.
           </div>
         )}

@@ -9,6 +9,7 @@ import { BookingSheet, type NewBookingDraft } from "@/components/bookings-dialog
 import { RecurringSheet, SeriesList } from "@/components/bookings-recurring";
 import { BOOKINGS_CSS, hhmm, useFirstVisits } from "@/components/bookings-shared";
 import { DayView, MonthView, WeekView } from "@/components/bookings-views";
+import { LOCKS_CSS, LockSheet } from "@/components/bookings-locks";
 import { WHEN_CSS } from "@/components/when-picker";
 import type { BookingWithServices } from "@/lib/types";
 
@@ -16,7 +17,8 @@ type View = "Month" | "Week" | "Day" | "Recurring";
 type SheetKind =
   | { kind: "edit"; id: string }
   | { kind: "new"; draft: NewBookingDraft }
-  | { kind: "recurring" };
+  | { kind: "recurring" }
+  | { kind: "lock"; id?: string; date: string };
 /** `n` keys the sheet, so every opening starts from a fresh form. */
 type SheetState = SheetKind & { n: number };
 
@@ -31,7 +33,7 @@ export default function BookingsPage() {
 }
 
 function Bookings() {
-  const { clients, bookings, services, clientById, today } = useSalon();
+  const { clients, bookings, services, locks, clientById, today } = useSalon();
   const params = useSearchParams();
   const router = useRouter();
   const [toast, say] = useToast();
@@ -92,7 +94,7 @@ function Bookings() {
 
   return (
     <>
-      <style>{BOOKINGS_CSS + WHEN_CSS}</style>
+      <style>{BOOKINGS_CSS + WHEN_CSS + LOCKS_CSS}</style>
       <h1>Diary</h1>
 
       <div className="bk-top">
@@ -110,7 +112,8 @@ function Bookings() {
         <WeekView {...shared} openDay={(d) => { setFocus(d); setView("Day"); }} addOn={(d) => newOn(d)} />
       )}
       {view === "Day" && (
-        <DayView {...shared} bookSlot={(d, min) => newOn(d, hhmm(min))} />
+        <DayView {...shared} bookSlot={(d, min) => newOn(d, hhmm(min))} locks={locks}
+          onLock={(l) => open({ kind: "lock", id: l.id, date: l.date })} newLock={(d) => open({ kind: "lock", date: d })} />
       )}
       {view === "Recurring" && (
         <SeriesList onEdit={onEdit} onNew={() => open({ kind: "recurring" })} onDone={say} />
@@ -121,6 +124,9 @@ function Bookings() {
       )}
       {sheet?.kind === "edit" && editing && (
         <BookingSheet key={sheet.n} booking={editing} onClose={() => setSheet(null)} onDone={say} />
+      )}
+      {sheet?.kind === "lock" && (!sheet.id || locks.some((l) => l.id === sheet.id)) && (
+        <LockSheet key={sheet.n} lock={locks.find((l) => l.id === sheet.id)} date={sheet.date} onClose={() => setSheet(null)} onDone={say} />
       )}
       {sheet?.kind === "recurring" && (
         <RecurringSheet key={sheet.n} onClose={() => setSheet(null)} onDone={say} />

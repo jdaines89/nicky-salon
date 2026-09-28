@@ -381,14 +381,38 @@ export function isEstimatedVisit(
   return v.service === PRIOR_VISIT_LABEL || v.label === PRIOR_VISIT_LABEL;
 }
 
-// ============ SERVICES / PACKAGES ============
+// ============ SERVICES / PROMOTIONS ============
 
 /**
- * A package deal is a `services` row under this reserved category — no separate
+ * A promotion is a `services` row under this reserved category — no separate
  * table, so it books, snapshots, soft-deletes and reports like any service. The
- * bundle price is set once, never derived from components.
+ * price is set once, never derived from components. Promotions were called
+ * "packages" at first; a row under the old name still counts as one.
  */
-export const PACKAGE_CATEGORY = "Packages";
+export const PROMO_CATEGORY = "Promotions";
+const LEGACY_PROMO_CATEGORY = "Packages";
+
+export function isPromo(s: { category?: string | null }): boolean {
+  return s.category === PROMO_CATEGORY || s.category === LEGACY_PROMO_CATEGORY;
+}
+
+/**
+ * Whether a service can be booked for an appointment on `date`. Regular
+ * services always can; a promotion only inside its window (an open end has no limit).
+ */
+export function offeredOn(s: { category?: string | null; promo_start?: string | null; promo_end?: string | null }, date: ISODate): boolean {
+  if (!isPromo(s)) return true;
+  if (s.promo_start && date < s.promo_start) return false;
+  if (s.promo_end && date > s.promo_end) return false;
+  return true;
+}
+
+/** Where a promotion's window stands on `today`: running, not started yet, or over. */
+export function promoState(s: { promo_start?: string | null; promo_end?: string | null }, today: ISODate): "running" | "upcoming" | "ended" {
+  if (s.promo_end && today > s.promo_end) return "ended";
+  if (s.promo_start && today < s.promo_start) return "upcoming";
+  return "running";
+}
 
 // ============ BOOKINGS ============
 
@@ -396,12 +420,58 @@ export const PACKAGE_CATEGORY = "Packages";
  * How the client paid. Null means it was never recorded — true of every booking
  * taken before this existed — so it shows as "not recorded", never guessed.
  */
-export const PAYMENT_METHODS = ["cash", "card", "transfer"] as const;
+export const PAYMENT_METHODS = ["cash", "card", "transfer", "voucher"] as const;
 export const PAYMENT_LABELS: Readonly<Record<string, string>> = {
   cash: "Cash",
   card: "Card",
   transfer: "Transfer/EFT",
+  voucher: "Voucher",
 };
+
+// ============ LATE CANCELLATIONS ============
+
+/**
+ * Nicky's policy: a client who cancels with under 24 hours' notice, for a
+ * reason that isn't an emergency, pays 30% of that visit at her next one.
+ */
+export const LATE_FEE_RATE = 0.3;
+export const LATE_FEE_LABEL = "Late cancellation fee (30%)";
+
+/** 30% of what the cancelled visit was worth (services less discount), to the Rand. */
+export function lateFeeFor(booking: Pick<BookingLike, "booking_services" | "discount">): number {
+  return Math.round(bookingNet(booking) * LATE_FEE_RATE);
+}
+
+/** A client's late-cancellation fees still to be paid, oldest first. */
+export function owedLateFees<B extends BookingLike & { late_fee_status?: string | null }>(bookings: B[], clientId: string | null | undefined): B[] {
+  if (!clientId) return [];
+  return bookings
+    .filter((b) => b.client_id === clientId && b.status === "cancelled" && b.late_fee_status === "owed")
+    .sort((a, b) => cmpTuple([String(a.date), String(a.time)], [String(b.date), String(b.time)]));
+}
+
+// ============ BLOCKED TIME ============
+
+/**
+ * Blocked-out time drawn as a booking-shaped row, so the free-time maths
+ * (findCollision, freeGaps, the time slots) treats it like any appointment.
+ * Only ever passed to those; never to anything that counts money or visits.
+ */
+export const LOCK_PREFIX = "lock:";
+export function lockAsBooking<L extends { id: string; date: string; time: string; duration_minutes: number; label: string }>(l: L) {
+  return {
+    id: LOCK_PREFIX + l.id, client_id: null, series_id: null, date: l.date, time: l.time, duration_minutes: l.duration_minutes,
+    status: "confirmed" as const, discount: 0, tip: 0, notes: l.label, payment_method: null, created_at: null,
+    booking_services: [{ id: LOCK_PREFIX + l.id, booking_id: LOCK_PREFIX + l.id, service_id: null, service_name: l.label, price_at_time: 0, quantity: 1 }],
+  };
+}
+export const isLock = (b: { id: string }) => b.id.startsWith(LOCK_PREFIX);
+
+/** A few letters for a busy card: 'Card', 'EFT'. Null when not recorded. */
+export function paymentShort(booking: Pick<BookingLike, "payment_method">): string | null {
+  const m = booking.payment_method;
+  return m === "transfer" ? "EFT" : m && Object.prototype.hasOwnProperty.call(PAYMENT_LABELS, m) ? PAYMENT_LABELS[m] : null;
+}
 
 export function paymentLabel(booking: Pick<BookingLike, "payment_method">): string {
   const key = booking.payment_method || "";
@@ -425,8 +495,10 @@ export function bookingNet(booking: Pick<BookingLike, "booking_services" | "disc
 export function bookingTitle(booking: Pick<BookingLike, "booking_services">): string {
   const svcs = booking.booking_services || [];
   if (!svcs.length) return "—";
-  if (svcs.length === 1) return svcs[0].service_name;
-  return `${svcs[0].service_name} +${svcs.length - 1} more`;
+  const q = Number(svcs[0].quantity || 1);
+  const first = q > 1 ? `${svcs[0].service_name} x${q}` : svcs[0].service_name;
+  if (svcs.length === 1) return first;
+  return `${first} +${svcs.length - 1} more`;
 }
 
 /**

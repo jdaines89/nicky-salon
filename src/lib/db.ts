@@ -9,8 +9,8 @@
 import { supabase } from "@/lib/supabase";
 import { computeRecurringDates, fetchAll, todaySa } from "@/lib/salon";
 import type {
-  BookingStatus, BookingWithServices, Client, ClientPhoto, PaymentMethod, PriorVisit,
-  RecurringEndType, RecurringSeries, Service,
+  BookingStatus, BookingWithServices, Client, ClientPhoto, LateFeeStatus, PaymentMethod, PriorVisit,
+  RecurringEndType, RecurringSeries, Service, TimeLock,
 } from "@/lib/types";
 
 export interface SalonData {
@@ -19,6 +19,8 @@ export interface SalonData {
   services: Service[];
   bookings: BookingWithServices[];
   series: RecurringSeries[];
+  /** Blocked-out time (lunch and so on). */
+  locks: TimeLock[];
 }
 
 function fail(error: unknown): never {
@@ -27,15 +29,16 @@ function fail(error: unknown): never {
 }
 
 export async function loadAll(): Promise<SalonData> {
-  const [clients, services, bookings, series] = await Promise.all([
+  const [clients, services, bookings, series, locks] = await Promise.all([
     fetchAll<Client>(() => supabase.from("clients").select("*").order("name").order("id")),
     fetchAll<Service>(() => supabase.from("services").select("*").order("category").order("name").order("id")),
     fetchAll<BookingWithServices>(() =>
       supabase.from("bookings").select("*, booking_services(*)").order("date").order("time").order("id")),
     fetchAll<RecurringSeries>(() =>
       supabase.from("recurring_series").select("*").order("created_at", { ascending: false }).order("id")),
+    fetchAll<TimeLock>(() => supabase.from("time_locks").select("*").order("date").order("time").order("id")),
   ]);
-  return { clients, services, bookings, series };
+  return { clients, services, bookings, series, locks };
 }
 
 // ============ CLIENTS ============
@@ -66,7 +69,9 @@ export async function updateClient(id: string, fields: Partial<ClientFields>): P
 
 // ============ SERVICES ============
 
-export async function addService(f: { category: string; name: string; price: number; duration_minutes: number }): Promise<Service> {
+export async function addService(f: {
+  category: string; name: string; price: number; duration_minutes: number; promo_start?: string | null; promo_end?: string | null;
+}): Promise<Service> {
   const { data, error } = await supabase.from("services").insert({ ...f, active: true }).select().single();
   if (error) fail(error);
   return data as Service;
@@ -79,8 +84,12 @@ export async function updateService(id: string, fields: Partial<Omit<Service, "i
 
 // ============ BOOKINGS ============
 
-/** A service line as picked in the booking form, before it's snapshotted. */
-export interface PickedService { service_id: string | null; service_name: string; price: number }
+/**
+ * A service line as picked in the booking form, before it's snapshotted.
+ * `price` is the line's total (unit price x quantity), which is what
+ * price_at_time stores, so every revenue sum stays a plain sum.
+ */
+export interface PickedService { service_id: string | null; service_name: string; price: number; quantity?: number }
 
 export interface BookingFields {
   client_id: string;
@@ -92,6 +101,11 @@ export interface BookingFields {
   discount?: number;
   tip?: number;
   payment_method?: PaymentMethod | null;
+  voucher_code?: string | null;
+  voucher_value?: number | null;
+  late_cancel?: boolean;
+  late_fee?: number | null;
+  late_fee_status?: LateFeeStatus | null;
   series_id?: string | null;
 }
 
@@ -99,6 +113,7 @@ async function writeLines(bookingId: string, services: PickedService[]) {
   if (!services.length) return;
   const rows = services.map((s) => ({
     booking_id: bookingId, service_id: s.service_id, service_name: s.service_name, price_at_time: s.price,
+    quantity: Math.max(1, Math.round(s.quantity ?? 1)),
   }));
   const { error } = await supabase.from("booking_services").insert(rows);
   if (error) fail(error);
@@ -109,6 +124,8 @@ export async function addBooking(f: BookingFields, services: PickedService[]): P
     client_id: f.client_id, series_id: f.series_id ?? null, date: f.date, time: f.time,
     duration_minutes: f.duration_minutes, status: f.status, discount: f.discount ?? 0, tip: f.tip ?? 0,
     notes: f.notes || null, payment_method: f.payment_method ?? null,
+    voucher_code: f.voucher_code || null, voucher_value: f.voucher_value ?? null,
+    late_cancel: f.late_cancel ?? false, late_fee: f.late_fee ?? null, late_fee_status: f.late_fee_status ?? null,
   };
   const { data, error } = await supabase.from("bookings").insert(row).select("id").single();
   if (error) fail(error);
@@ -128,6 +145,14 @@ export async function updateBooking(id: string, fields: Partial<BookingFields>, 
     if (error) fail(error);
     await writeLines(id, services);
   }
+}
+
+/** Settle late-cancellation fees: charged on the visit `chargedOn`, or waived (chargedOn null). */
+export async function settleLateFees(cancelledIds: string[], status: "charged" | "waived" | "owed", chargedOn: string | null): Promise<void> {
+  if (!cancelledIds.length) return;
+  const { error } = await supabase.from("bookings")
+    .update({ late_fee_status: status, late_fee_booking_id: status === "charged" ? chargedOn : null }).in("id", cancelledIds);
+  if (error) fail(error);
 }
 
 export async function deleteBooking(id: string): Promise<void> {
@@ -171,6 +196,27 @@ export async function cancelSeries(seriesId: string): Promise<void> {
   if (error) fail(error);
   const r = await supabase.from("recurring_series").update({ active: false }).eq("id", seriesId);
   if (r.error) fail(r.error);
+}
+
+// ============ BLOCKED TIME ============
+
+export interface LockFields { date: string; time: string; duration_minutes: number; label: string }
+
+/** One row per date, so a repeated lunch can be lifted one day at a time. */
+export async function addLocks(rows: LockFields[]): Promise<void> {
+  if (!rows.length) return;
+  const { error } = await supabase.from("time_locks").insert(rows.map((r) => ({ ...r, label: r.label.trim() || "Blocked" })));
+  if (error) fail(error);
+}
+
+export async function updateLock(id: string, f: LockFields): Promise<void> {
+  const { error } = await supabase.from("time_locks").update({ ...f, label: f.label.trim() || "Blocked" }).eq("id", id);
+  if (error) fail(error);
+}
+
+export async function deleteLock(id: string): Promise<void> {
+  const { error } = await supabase.from("time_locks").delete().eq("id", id);
+  if (error) fail(error);
 }
 
 // ============ CLIENT PHOTOS ============

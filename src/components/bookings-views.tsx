@@ -1,14 +1,14 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Plus, StickyNote } from "lucide-react";
+import { ChevronLeft, ChevronRight, Coffee, Lock, Plus, StickyNote } from "lucide-react";
 import { rand } from "@/components/ui";
 import { DayStrip } from "@/components/when-picker";
 import { bookingLook, freeText, hhmm, StatusLegend, type FvMap } from "@/components/bookings-shared";
 import {
-  addDays, bookingNet, bookingTitle, CLOSE_MIN, dayOfMonth, firstName, fmtDayMonShort, freeGaps,
-  monthBounds, monthName, nowSa, OPEN_MIN, toMinutes, weekday,
+  addDays, bookingNet, bookingTitle, CLOSE_MIN, dayOfMonth, firstName, fmtDayMonShort, freeGaps, lockAsBooking,
+  monthBounds, monthName, nowSa, OPEN_MIN, paymentShort, toMinutes, weekday,
 } from "@/lib/salon";
-import type { BookingWithServices, Client } from "@/lib/types";
+import type { BookingWithServices, Client, TimeLock } from "@/lib/types";
 
 /** 'R850', 'R1.2k': fits a phone-width calendar cell. */
 const shortRand = (n: number) => (n >= 1000 ? `R${(n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, "")}k` : `R${Math.round(n)}`);
@@ -58,7 +58,7 @@ function BookingRow({ b, byId, fv, onEdit, showDate }: {
       <span className="time">{showDate && <span className="small" style={{ display: "block", fontWeight: 600, color: "var(--ink-soft)" }}>{fmtDayMonShort(b.date)}</span>}{b.time.slice(0, 5)}</span>
       <div className="grow">
         <div className="title">{nameOf(b, byId)}</div>
-        <div className="meta">{bookingTitle(b)} · {rand(bookingNet(b))}{b.notes ? ` · ${b.notes}` : ""}</div>
+        <div className="meta">{bookingTitle(b)} · {rand(bookingNet(b))}{paymentShort(b) ? ` · ${paymentShort(b)}` : ""}{b.notes ? ` · ${b.notes}` : ""}</div>
       </div>
       <span className={`badge ${look.badge}`}>{look.label}</span>
     </button>
@@ -215,17 +215,22 @@ function lanes(items: { id: string; s: number; e: number }[]): Map<string, { lan
   return out;
 }
 
-export function DayView({ focus, today, bookings, clientById, fv, setFocus, onEdit, bookSlot }: ViewProps & {
+export function DayView({ focus, today, bookings, clientById, fv, setFocus, onEdit, bookSlot, locks, onLock, newLock }: ViewProps & {
   bookSlot: (date: string, startMin: number) => void;
+  locks: TimeLock[]; onLock: (l: TimeLock) => void; newLock: (date: string) => void;
 }) {
   const appts = bookings.filter((b) => b.date === focus).sort((a, b) => a.time.localeCompare(b.time));
-  const gaps = freeGaps(appts).filter(([s, e]) => e - s >= 20);
+  const dayLocks = locks.filter((l) => l.date === focus);
+  const lockRows = dayLocks.map(lockAsBooking);
+  const gaps = freeGaps([...appts, ...lockRows]).filter(([s, e]) => e - s >= 20);
   const height = (CLOSE_MIN - OPEN_MIN) * PX;
-  const items = appts.map((b) => {
-    const s0 = toMinutes(b.time);
-    return { b, id: b.id, s: Math.max(s0, OPEN_MIN), e: Math.min(s0 + (b.duration_minutes || 30), CLOSE_MIN) };
-  }).filter((x) => x.e > x.s);
-  const laneOf = lanes(items);
+  const span = (id: string, time: string, dur: number | null | undefined) => {
+    const s0 = toMinutes(time);
+    return { id, s: Math.max(s0, OPEN_MIN), e: Math.min(s0 + (dur || 30), CLOSE_MIN) };
+  };
+  const items = appts.map((b) => ({ b, ...span(b.id, b.time, b.duration_minutes) })).filter((x) => x.e > x.s);
+  const lockItems = dayLocks.map((l) => ({ l, ...span("lock:" + l.id, l.time, l.duration_minutes) })).filter((x) => x.e > x.s);
+  const laneOf = lanes([...items, ...lockItems]);
   const outside = appts.filter((b) => !items.some((x) => x.id === b.id));
   const live = appts.filter((b) => b.status !== "cancelled" && b.status !== "no-show");
   const takings = live.reduce((s, b) => s + bookingNet(b), 0);
@@ -252,13 +257,25 @@ export function DayView({ focus, today, bookings, clientById, fv, setFocus, onEd
             {gaps.map(([s, e]) => {
               // A short appointment is drawn taller than its minutes so it can be
               // read, so a gap starts below whatever is drawn above it.
-              const above = items.filter((x) => x.e <= s).reduce((m, x) => Math.max(m, (x.s - OPEN_MIN) * PX + Math.max((x.e - x.s) * PX, MIN_APPT)), 0);
+              const above = [...items, ...lockItems].filter((x) => x.e <= s).reduce((m, x) => Math.max(m, (x.s - OPEN_MIN) * PX + Math.max((x.e - x.s) * PX, MIN_APPT)), 0);
               const top = Math.max((s - OPEN_MIN) * PX, above) + 2, gh = (e - OPEN_MIN) * PX - 2 - top;
               if (gh < 12) return null;
               return (
                 <button key={`g${s}`} className="bk-gap" style={{ top, height: gh, paddingTop: gh < 30 ? 0 : undefined, alignItems: gh < 30 ? "center" : undefined }}
                   onClick={() => bookSlot(focus, s)} aria-label={`Book ${hhmm(s)}, ${freeText(e - s)} free until ${hhmm(e)}`}>
                   {gh >= 22 && <><Plus size={15} /> {hhmm(s)}<span>{freeText(e - s)} free</span></>}
+                </button>
+              );
+            })}
+            {lockItems.map(({ l, id, s, e }) => {
+              const ln = laneOf.get(id) ?? { lane: 0, of: 1 };
+              const h = Math.max((e - s) * PX, MIN_APPT);
+              return (
+                <button key={id} className={`bk-lock${h < 46 ? " short" : ""}`} onClick={() => onLock(l)}
+                  aria-label={`${l.label}, blocked ${l.time.slice(0, 5)} to ${hhmm(toMinutes(l.time) + l.duration_minutes)}. Tap to change.`}
+                  style={{ top: (s - OPEN_MIN) * PX, height: h, left: `calc(4px + (100% - 8px) * ${ln.lane / ln.of})`, width: `calc((100% - 8px) / ${ln.of} - 3px)` }}>
+                  <b><Lock size={13} />{l.label}</b>
+                  <span>{l.time.slice(0, 5)}–{hhmm(toMinutes(l.time) + l.duration_minutes)}</span>
                 </button>
               );
             })}
@@ -274,7 +291,8 @@ export function DayView({ focus, today, bookings, clientById, fv, setFocus, onEd
                     left: `calc(4px + (100% - 8px) * ${l.lane / l.of})`,
                     width: `calc((100% - 8px) / ${l.of} - 3px)`, zIndex: faded ? 1 : 2,
                   }}>
-                  <span className="n"><span className="nm">{nameOf(b, clientById)}</span>{look.label !== "Confirmed" && <em>{look.label}</em>}</span>
+                  <span className="n"><span className="nm">{nameOf(b, clientById)}</span>{look.label !== "Confirmed" && <em>{look.label}</em>}
+                    <em className="amt">{rand(bookingNet(b))}{paymentShort(b) ? ` · ${paymentShort(b)}` : ""}</em></span>
                   <span className="w">{b.time.slice(0, 5)}–{hhmm(toMinutes(b.time) + (b.duration_minutes || 30))} · {bookingTitle(b)}</span>
                   {b.notes && h >= 70 && <span className="w nt"><StickyNote size={11} /> {b.notes}</span>}
                 </button>
@@ -293,7 +311,10 @@ export function DayView({ focus, today, bookings, clientById, fv, setFocus, onEd
             </div>
           </>
         )}
-        <StatusLegend />
+        <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+          <StatusLegend />
+          <button type="button" className="soft pill" onClick={() => newLock(focus)}><Coffee size={17} />Block out time</button>
+        </div>
       </div>
     </>
   );

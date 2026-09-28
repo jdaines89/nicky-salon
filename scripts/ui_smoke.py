@@ -15,8 +15,11 @@ today = date.today()
 def d(n): return str(today + timedelta(days=n))
 cats = [("Gel Overlays", "Gel Overlay", 280, 60), ("Gel Overlays", "Gel Overlay + Removal", 300, 75),
         ("Waxing", "Brow Wax", 90, 15), ("Pedicures", "Full Pedicure", 300, 60), ("Nail Art", "Add Nail Art Per Nail", 15, 10),
-        ("Packages", "Mani + Pedi Deal", 520, 120)]
+        ("Promotions", "Mani + Pedi Deal", 520, 120), ("Promotions", "Winter Warmer", 400, 90)]
 services = [{"id": str(uuid.uuid4()), "category": c, "name": n, "price": p, "duration_minutes": m, "active": True, "created_at": None} for c, n, p, m in cats]
+# One promotion running to the end of next month, one that has ended (never offered for booking).
+services[5].update({"promo_start": d(-10), "promo_end": d(40)})
+services[6].update({"promo_start": d(-60), "promo_end": d(-5)})
 names = ["Thandi Mbeki", "Lerato Dlamini", "Zanele Khumalo", "Anne-Marie O'Brien", "Kyra", "Margaret Smith", "R&B <Nails>", "Corienne van der Merwe"]
 clients = [{"id": str(uuid.uuid4()), "name": n, "phone": "082 123 45%02d" % i if i % 3 else None, "shape": "Almond", "shade": "Nude",
             "birthday": today.strftime("%m-") + "%02d" % (i + 1) if i < 3 else None, "prior_visits": [], "created_at": None} for i, n in enumerate(names)]
@@ -35,6 +38,18 @@ for t in ["09:00:00", "11:30:00"]:
     bookings.append({"id": bid, "client_id": c["id"], "series_id": None, "date": d(0), "time": t, "duration_minutes": 60, "status": "confirmed",
                      "discount": 0, "tip": 0, "notes": "Wants a darker shade", "payment_method": None, "created_at": None,
                      "booking_services": [{"id": str(uuid.uuid4()), "booking_id": bid, "service_id": s["id"], "service_name": s["name"], "price_at_time": s["price"]}]})
+# Today's lunch is blocked out; Thandi cancelled late last week and owes the fee;
+# one visit was paid by voucher and one has nail art on five nails.
+locks = [{"id": str(uuid.uuid4()), "date": d(0), "time": "13:00:00", "duration_minutes": 45, "label": "Lunch", "created_at": None},
+         {"id": str(uuid.uuid4()), "date": d(1), "time": "13:00:00", "duration_minutes": 45, "label": "Lunch", "created_at": None}]
+bid = str(uuid.uuid4())
+bookings.append({"id": bid, "client_id": clients[0]["id"], "series_id": None, "date": d(-5), "time": "10:00:00", "duration_minutes": 60,
+                 "status": "cancelled", "discount": 0, "tip": 0, "notes": None, "payment_method": None, "created_at": None,
+                 "late_cancel": True, "late_fee": 90, "late_fee_status": "owed",
+                 "booking_services": [{"id": str(uuid.uuid4()), "booking_id": bid, "service_id": services[1]["id"], "service_name": services[1]["name"], "price_at_time": 300, "quantity": 1}]})
+bookings[-3]["payment_method"] = "voucher"; bookings[-3]["voucher_code"] = "GV-0412"; bookings[-3]["voucher_value"] = 280
+bookings[-2]["booking_services"].append({"id": str(uuid.uuid4()), "booking_id": bookings[-2]["id"], "service_id": services[4]["id"], "service_name": services[4]["name"], "price_at_time": 75, "quantity": 5})
+bookings[-2]["payment_method"] = "card"
 # Stand-in nail photos: soft polish colours on five almond nails, served as SVG.
 POLISH = ["#E8B4B8", "#B5838D", "#6D597A", "#F2CC8F", "#81B29A", "#E07A5F", "#3D405B", "#F4F1DE", "#CDB4DB", "#A3C4BC", "#9A031E", "#FFCAD4"]
 def nail_svg(c):
@@ -46,7 +61,7 @@ photos = [{"id": str(uuid.uuid4()), "client_id": clients[i % len(clients)]["id"]
 # One of today's visits already has a photo, for the booking sheet's Photos row.
 photos.append({"id": str(uuid.uuid4()), "client_id": clients[0]["id"], "booking_id": bookings[-2]["id"],
                "storage_path": f"{clients[0]['id']}/p12.svg", "caption": None, "created_at": d(0) + "T10:05:00Z"})
-TABLES = {"clients": clients, "services": services, "bookings": bookings, "recurring_series": [], "client_photos": photos, "booking_services": []}
+TABLES = {"clients": clients, "services": services, "bookings": bookings, "recurring_series": [], "client_photos": photos, "booking_services": [], "time_locks": locks}
 writes = []
 
 def handle(route, request):
@@ -130,6 +145,27 @@ with sync_playwright() as p:
         page.locator("button.ts-slot").nth(2).click()
         page.wait_for_timeout(300)
         page.screenshot(path=os.path.join(SHOTS, f"{label}_sheet_2_filled.png"))
+        # Thandi owes a late-cancellation fee: it's offered, and nail art takes a quantity.
+        if not page.locator(".bk-fee").count(): errs.append("owed late fee not offered")
+        else:
+            page.locator(".bk-fee").scroll_into_view_if_needed(); page.wait_for_timeout(200)
+            page.screenshot(path=os.path.join(SHOTS, f"{label}_sheet_2b_fee.png"))
+            page.locator(".bk-fee button.gold").click(); page.wait_for_timeout(200)
+        page.locator("button.soft.pill", has_text="Add another service").click()
+        page.locator("button.sp-cat-h", has_text="Nail Art").click()
+        page.locator("button.sp-opt").first.click()
+        for _ in range(4): page.locator("button[aria-label='One more']").last.click()
+        page.wait_for_timeout(200)
+        page.locator(".sp-chosen").scroll_into_view_if_needed()
+        page.screenshot(path=os.path.join(SHOTS, f"{label}_sheet_2c_qty.png"))
+        if "x 5" not in page.inner_text(".sp-chosen").replace("×", "x") and "5 x" not in page.inner_text(".sp-chosen").replace("×", "x"):
+            errs.append("quantity not shown")
+        if page.locator("button.sp-cat-h", has_text="Winter Warmer").count(): errs.append("ended promotion offered")
+        page.locator("button.bs-toggle").click(); page.wait_for_timeout(150)
+        page.locator(".bk-segfull button", has_text="Voucher").click(); page.wait_for_timeout(150)
+        page.locator("input[placeholder^='e.g. GV']").fill("GV-0999")
+        page.locator(".bk-segfull button", has_text="Voucher").scroll_into_view_if_needed()
+        page.screenshot(path=os.path.join(SHOTS, f"{label}_sheet_2d_voucher.png"))
         page.evaluate("document.querySelector('.sheet').scrollTo(0, 99999)"); page.wait_for_timeout(300)
         page.screenshot(path=os.path.join(SHOTS, f"{label}_sheet_3_bottom.png"))
         page.locator("button.bs-go").click(); page.wait_for_timeout(250)
@@ -152,6 +188,35 @@ with sync_playwright() as p:
         if errs: failures.append((label, "booking photos", errs))
         print(("FAIL " if errs else "ok   ") + label, "booking photos", errs[:3])
         page.close()
+        # Blocked time: the day view shows lunch; the sheet to block more.
+        page = ctx.new_page(); errs = []
+        page.on("pageerror", lambda e: errs.append("pageerror: " + str(e)))
+        page.goto(f"http://127.0.0.1:{srv.server_address[1]}/bookings/?day={d(0)}"); page.wait_for_timeout(1800)
+        if not page.locator("button.bk-lock").count(): errs.append("lunch not drawn in the day")
+        page.screenshot(path=os.path.join(SHOTS, f"{label}_day_lock.png"), full_page=True)
+        page.locator("button.soft.pill", has_text="Block out time").click(); page.wait_for_timeout(400)
+        page.screenshot(path=os.path.join(SHOTS, f"{label}_lock_sheet.png"))
+        page.locator(".sheet button.ts-slot", has_text=":").last.click(); page.wait_for_timeout(150)
+        page.evaluate("document.querySelector('.sheet').scrollTo(0, 99999)"); page.wait_for_timeout(300)
+        page.screenshot(path=os.path.join(SHOTS, f"{label}_lock_sheet_bottom.png"))
+        page.locator("button.bs-go").click(); page.wait_for_timeout(600)
+        if page.locator(".sheet").count(): errs.append("lock sheet still open after save")
+        if not any(t == "time_locks" for _, t, _ in writes): errs.append("no blocked time saved")
+        if errs: failures.append((label, "blocked time", errs))
+        print(("FAIL " if errs else "ok   ") + label, "blocked time", errs[:3])
+        page.close()
+        # Sign-in: the eye shows the password.
+        sctx = b.new_context(viewport=vp)
+        sctx.route("https://example.supabase.co/**", handle)
+        page = sctx.new_page(); errs = []
+        page.goto(f"http://127.0.0.1:{srv.server_address[1]}/"); page.wait_for_timeout(1200)
+        page.fill("input[placeholder='Password']", "secret-123")
+        page.locator("button.pw-eye").click(); page.wait_for_timeout(150)
+        if page.get_attribute("input[placeholder='Password']", "type") != "text": errs.append("eye doesn't show the password")
+        page.screenshot(path=os.path.join(SHOTS, f"{label}_signin_eye.png"))
+        if errs: failures.append((label, "sign-in eye", errs))
+        print(("FAIL " if errs else "ok   ") + label, "sign-in eye", errs[:3])
+        sctx.close()
         # Each look she can pick, on the two screens she sees most.
         if label == "phone":
             # The curtain itself, caught mid-open.

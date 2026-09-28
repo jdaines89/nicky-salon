@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, Minus, Plus, Sparkles } from "lucide-react";
 import {
-  addDays, CLOSE_MIN, dayOfMonth, findCollision, freeGaps, monthBounds, monthName, nowSa, OPEN_MIN, toMinutes, weekday,
+  addDays, CLOSE_MIN, dayOfMonth, findCollision, fmtWeekdayDayMonth, freeGaps, monthBounds, monthName, nowSa, OPEN_MIN, toMinutes, weekday,
 } from "@/lib/salon";
 import type { BookingWithServices } from "@/lib/types";
 
@@ -119,6 +119,27 @@ function MonthGrid({ value, today, counts, onPick }: { value: string; today: str
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+const NO_COUNTS = new Map<string, number>();
+
+/** One date, picked from a small month calendar that opens in place. No native date control. */
+export function DatePick({ value, onChange, today, placeholder = "Pick a date" }: {
+  value: string | null; onChange: (d: string) => void; today: string; placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="dp">
+      <button type="button" className="dp-btn" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <CalendarDays size={17} /><span className="grow">{value ? fmtWeekdayDayMonth(value) : placeholder}</span>
+      </button>
+      {open && (
+        <div className="dp-cal">
+          <MonthGrid value={value ?? today} today={today} counts={NO_COUNTS} onPick={(d) => { onChange(d); setOpen(false); }} />
+        </div>
+      )}
     </div>
   );
 }
@@ -264,15 +285,15 @@ export function fmtDuration(min: number): string {
 }
 
 /** Plus and minus in 15s: no keyboard, no typing minutes into a box. */
-export function DurationStepper({ value, onChange, auto, onAuto, autoValue }: {
-  value: number; onChange: (n: number) => void; auto: boolean; onAuto: () => void; autoValue: number;
+export function DurationStepper({ value, onChange, auto, onAuto, autoValue, autoText = "from the services" }: {
+  value: number; onChange: (n: number) => void; auto: boolean; onAuto: () => void; autoValue: number; autoText?: string;
 }) {
   return (
     <div className="dur">
       <button type="button" className="ghost icon pill" aria-label="15 minutes shorter" disabled={value <= 15} onClick={() => onChange(Math.max(15, value - 15))}><Minus size={18} /></button>
       <div className="dur-v">
         <b>{fmtDuration(value)}</b>
-        {auto ? <span>from the services</span>
+        {auto ? autoText && <span>{autoText}</span>
           : <button type="button" className="linkish" onClick={onAuto}>Reset to {fmtDuration(autoValue)}</button>}
       </div>
       <button type="button" className="ghost icon pill" aria-label="15 minutes longer" disabled={value >= 480} onClick={() => onChange(Math.min(480, value + 15))}><Plus size={18} /></button>
@@ -347,6 +368,9 @@ button.ts-slot.on small, button.ts-slot.on .spark { color: color-mix(in srgb, va
 .cc-grid.m { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .cc-grid button.ts-slot { min-height: 44px; font-size: 16px; }
 
+button.dp-btn { width: 100%; justify-content: flex-start; gap: 10px; min-height: 48px; background: var(--paper); color: var(--ink); border: 1.5px solid var(--line-2); border-radius: 14px; font-weight: 600; }
+button.dp-btn:hover { background: var(--teal-mist); }
+.dp-cal { margin-top: 8px; padding: 10px; border-radius: 16px; background: var(--paper); }
 .dur { display: flex; align-items: center; gap: 10px; }
 .dur-v { flex: 1; text-align: center; display: flex; flex-direction: column; line-height: 1.2; }
 .dur-v b { font-family: var(--serif); font-size: 21px; font-weight: 450; }

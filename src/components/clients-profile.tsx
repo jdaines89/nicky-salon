@@ -8,8 +8,9 @@ import { Contact } from "@/components/ui";
 import { cadence, reliability, suggestNextVisit } from "@/lib/insights";
 import {
   clientHasUpcoming, clientInitial, clientVisits, completedVisitCount, firstName, fmtDayMonth,
-  fmtWeekdayDayMonth, isEstimatedVisit, loyaltyProgress,
+  fmtDayMonShort, fmtWeekdayDayMonth, isEstimatedVisit, lateFeeFor, loyaltyProgress, owedLateFees,
 } from "@/lib/salon";
+import { rand } from "@/components/ui";
 import type { BookingWithServices, Client } from "@/lib/types";
 
 const HISTORY_PREVIEW = 12;
@@ -39,6 +40,11 @@ export function ClientProfile({ client, bookings, today, onEdit, say }: {
   const rel = reliability(client, bookings, today);
   const visits = clientVisits(client, bookings, today);
   const estimated = visits.filter((v) => isEstimatedVisit(v)).length;
+  const lastVisit = visits.find((v) => v.status === "confirmed");
+  const nextBooking = bookings.filter((b) => b.client_id === client.id && b.date >= today && b.status !== "cancelled" && b.status !== "no-show")
+    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))[0];
+  const owed = owedLateFees(bookings, client.id);
+  const owedTotal = owed.reduce((s, b) => s + Number(b.late_fee ?? lateFeeFor(b)), 0);
 
   // Booking the next visit before she stands up is the strongest retention
   // lever there is, and unlike a discount it costs nothing — which matters when
@@ -91,10 +97,16 @@ export function ClientProfile({ client, bookings, today, onEdit, say }: {
       )}
 
       <div className="pf-tiles">
-        <div><span>Shape</span><b>{client.shape || "—"}</b></div>
-        <div><span>Shade</span><b>{client.shade || "—"}</b></div>
         <div><span>Visits</span><b>{visitsCount}</b></div>
+        <div><span>Last visit</span><b>{lastVisit ? fmtDayMonShort(lastVisit.date) : "—"}</b></div>
+        <div><span>Next visit</span><b>{nextBooking ? fmtDayMonShort(nextBooking.date) : "—"}</b></div>
       </div>
+
+      {owedTotal > 0 && (
+        <div className="notice" role="status">
+          <b>Late-cancellation fee owed: {rand(owedTotal)}.</b> It comes up when you book or open her next visit, where you can add it or waive it.
+        </div>
+      )}
 
       <div className="card">
         <div className="card-head"><h2><Gift size={18} />Loyalty card</h2>

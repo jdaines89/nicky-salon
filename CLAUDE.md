@@ -47,6 +47,16 @@ screenshots for the pages you touched.
   loyalty is every 5th completed visit at 20%, collisions are true interval
   overlaps, "today" always comes from `todaySa()`, booking_services snapshot
   name and price so editing a service never rewrites past revenue.
+- **Added 2026-09-28** (`..._nicky_feedback.sql`): `booking_services.quantity`
+  with `price_at_time` still the line *total*, so revenue stays a plain sum;
+  `payment_method` 'voucher' plus `voucher_code`/`voucher_value`; late
+  cancellations (`late_cancel`, `late_fee` = 30% of the visit, `late_fee_status`
+  owed/charged/waived, offered on the client's next visit as a fee line);
+  promotions (category "Promotions", legacy "Packages") with `promo_start`/
+  `promo_end`, offered only for appointments inside the window; `time_locks`
+  (blocked time), fed to the free-time maths through `busy` in `useSalon()`
+  and never to anything that counts money. Shape and shade are no longer asked
+  for; the columns and old values stay.
 - **Photos:** private `client-photos` bucket, signed URLs only, every image
   re-encoded in the browser (EXIF/GPS stripped) before upload.
 
