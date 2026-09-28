@@ -195,7 +195,7 @@ button.pf-next .grow > span:last-child { font-size: 14px; color: rgba(255,255,25
 .pf-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
 .pf-tiles > div { background: var(--card); border-radius: 18px; padding: 12px; box-shadow: var(--shadow-1); min-width: 0; }
 .pf-tiles span { display: block; font-size: 13.5px; font-weight: 650; color: var(--ink-soft); }
-.pf-tiles b { display: block; font-family: var(--serif); font-weight: 450; font-size: 20px; overflow-wrap: anywhere; line-height: 1.2; margin-top: 2px; }
+.pf-tiles b { display: block; font-family: var(--nums); font-weight: 700; font-size: 18px; overflow-wrap: anywhere; line-height: 1.2; margin-top: 2px; }
 .pf-stamps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
 .pf-stamps span { aspect-ratio: 1; max-height: 56px; border-radius: 50%; display: grid; place-items: center; border: 2px dashed var(--line-2); color: var(--ink-faint); justify-self: center; width: 100%; max-width: 56px; }
 .pf-stamps span.on { border: 0; background: linear-gradient(145deg, var(--gold-hi), var(--gold-2)); color: var(--on-gold); box-shadow: 0 6px 14px -8px rgba(166,122,63,0.9); animation: pop .3s var(--ease) both; }
