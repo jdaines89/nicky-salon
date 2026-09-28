@@ -50,6 +50,7 @@ bookings.append({"id": bid, "client_id": clients[0]["id"], "series_id": None, "d
 bookings[-3]["payment_method"] = "voucher"; bookings[-3]["voucher_code"] = "GV-0412"; bookings[-3]["voucher_value"] = 280
 bookings[-2]["booking_services"].append({"id": str(uuid.uuid4()), "booking_id": bookings[-2]["id"], "service_id": services[4]["id"], "service_name": services[4]["name"], "price_at_time": 75, "quantity": 5})
 bookings[-2]["payment_method"] = "card"
+bookings[-3]["completed_at"] = d(0) + "T08:05:00Z"
 # Stand-in nail photos: soft polish colours on five almond nails, served as SVG.
 POLISH = ["#E8B4B8", "#B5838D", "#6D597A", "#F2CC8F", "#81B29A", "#E07A5F", "#3D405B", "#F4F1DE", "#CDB4DB", "#A3C4BC", "#9A031E", "#FFCAD4"]
 def nail_svg(c):
@@ -63,12 +64,18 @@ photos.append({"id": str(uuid.uuid4()), "client_id": clients[0]["id"], "booking_
                "storage_path": f"{clients[0]['id']}/p12.svg", "caption": None, "created_at": d(0) + "T10:05:00Z"})
 TABLES = {"clients": clients, "services": services, "bookings": bookings, "recurring_series": [], "client_photos": photos, "booking_services": [], "time_locks": locks}
 writes = []
+# The very first read of blocked time is refused, as a token renewal racing the
+# first load did on live: the app must retry quietly, not show an error.
+refused_once = [False]
 
 def handle(route, request):
     u = urlparse(request.url); path = u.path
     if path.startswith("/rest/v1/"):
         table = path.split("/")[3]
         if request.method == "GET":
+            if table == "time_locks" and not refused_once[0]:
+                refused_once[0] = True
+                return route.fulfill(status=401, content_type="application/json", body=json.dumps({"code": "PGRST301", "message": "JWT expired"}))
             body = TABLES.get(table, [])
             if "vnd.pgrst.object" in (request.headers.get("accept") or ""): body = body[0] if body else {}
             return route.fulfill(status=200, content_type="application/json", body=json.dumps(body))
@@ -117,8 +124,10 @@ with sync_playwright() as p:
         for r in ROUTES:
             page = ctx.new_page(); errs = []
             page.on("pageerror", lambda e: errs.append("pageerror: " + str(e)))
-            page.on("console", lambda m: errs.append("console: " + m.text) if m.type == "error" else None)
+            # The deliberately refused first read (see refused_once) logs a 401; that one is expected.
+            page.on("console", lambda m: errs.append("console: " + m.text) if m.type == "error" and "status of 401" not in m.text else None)
             page.goto(f"http://127.0.0.1:{srv.server_address[1]}" + r); page.wait_for_timeout(1800)
+            if "Couldn't load the salon" in page.inner_text("body"): errs.append("load error shown")
             ow = page.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
             if label == "phone" and ow > 0: errs.append(f"horizontal overflow {ow}px")
             txt = page.inner_text("body")
@@ -185,6 +194,12 @@ with sync_playwright() as p:
             page.locator("button.bp-add").scroll_into_view_if_needed(); page.wait_for_timeout(300)
         if not page.locator("button.bp-th").count(): errs.append("booking photo not shown")
         page.screenshot(path=os.path.join(SHOTS, f"{label}_sheet_5_photos.png"))
+        # Complete the visit: it was paid by card, so one tap finishes it.
+        if not page.locator("button.bs-complete").count(): errs.append("no Complete visit button on today's booking")
+        else:
+            page.screenshot(path=os.path.join(SHOTS, f"{label}_sheet_6_complete.png"))
+            n = len(writes); page.locator("button.bs-complete").click(); page.wait_for_timeout(700)
+            if not any("completed_at" in (w[2] or "") for w in writes[n:]): errs.append("completing didn't save completed_at")
         if errs: failures.append((label, "booking photos", errs))
         print(("FAIL " if errs else "ok   ") + label, "booking photos", errs[:3])
         page.close()

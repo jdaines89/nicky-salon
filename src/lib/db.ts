@@ -106,6 +106,7 @@ export interface BookingFields {
   late_cancel?: boolean;
   late_fee?: number | null;
   late_fee_status?: LateFeeStatus | null;
+  completed_at?: string | null;
   series_id?: string | null;
 }
 
