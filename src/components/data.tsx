@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { loadAll, type SalonData } from "@/lib/db";
+import { supabase } from "@/lib/supabase";
 import { lockAsBooking, todaySa } from "@/lib/salon";
 import type { BookingWithServices, Client } from "@/lib/types";
 
@@ -27,12 +28,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const loadedAt = useRef(0);
   const reload = useCallback(async () => {
+    loadedAt.current = Date.now();
     try {
-      loadedAt.current = Date.now();
       setData(await loadAll());
       setError(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+    } catch {
+      // Opening the app after a while, the sign-in token is renewed at the same
+      // moment the first reads go out, and one of them can be refused. Let the
+      // renewal finish and ask once more before bothering her with an error.
+      try {
+        await new Promise((r) => setTimeout(r, 700));
+        await supabase.auth.getSession();
+        setData(await loadAll());
+        setError(null);
+      } catch (e2) {
+        setError(e2 instanceof Error ? e2.message : String(e2));
+      }
     }
   }, []);
 
@@ -61,7 +72,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return (
       <div className="card narrow">
         <h2>Couldn&apos;t load the salon&apos;s data</h2>
-        <p className="sub">{error}</p>
+        <p className="sub">Check the phone has signal, then try again. Nothing you saved is lost.</p>
+        <p className="small muted">{error}</p>
         <button onClick={reload}>Try again</button>
       </div>
     );

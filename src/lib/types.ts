@@ -104,6 +104,8 @@ export interface Booking {
   late_fee?: number | null; // 30% of the cancelled visit, fixed when flagged
   late_fee_status?: LateFeeStatus | null;
   late_fee_booking_id?: string | null; // the later visit the fee was added to
+  /** When she marked the visit done (status stays 'confirmed'). Null = not marked. */
+  completed_at?: string | null;
   created_at: string | null;
 }
 

@@ -55,7 +55,8 @@ screenshots for the pages you touched.
   promotions (category "Promotions", legacy "Packages") with `promo_start`/
   `promo_end`, offered only for appointments inside the window; `time_locks`
   (blocked time), fed to the free-time maths through `busy` in `useSalon()`
-  and never to anything that counts money. Shape and shade are no longer asked
+  and never to anything that counts money. `bookings.completed_at` is when she
+  tapped Complete visit (status stays confirmed). Shape and shade are no longer asked
   for; the columns and old values stay.
 - **Photos:** private `client-photos` bucket, signed URLs only, every image
   re-encoded in the browser (EXIF/GPS stripped) before upload.

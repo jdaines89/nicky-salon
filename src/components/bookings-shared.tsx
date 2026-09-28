@@ -11,7 +11,7 @@ import type { BookingWithServices, Client, Service } from "@/lib/types";
 // ---------------------------------------------------------------------------
 
 export const STATUS_COLOR: Record<string, string> = {
-  confirmed: "var(--teal-3)", pending: "var(--gold)", cancelled: "#9AA3A1", "no-show": "var(--danger)", new: "var(--rose)",
+  confirmed: "var(--teal-3)", done: "var(--teal)", pending: "var(--gold)", cancelled: "#9AA3A1", "no-show": "var(--danger)", new: "var(--rose)",
 };
 
 export type FvMap = Map<string | null, string>;
@@ -20,6 +20,7 @@ export type FvMap = Map<string | null, string>;
 export function bookingLook(b: BookingWithServices, fv: FvMap): { color: string; label: string; badge: string } {
   if (b.status === "cancelled") return { color: STATUS_COLOR.cancelled, label: "Cancelled", badge: "muted" };
   if (b.status === "no-show") return { color: STATUS_COLOR["no-show"], label: "No-Show", badge: "danger" };
+  if (b.status === "confirmed" && b.completed_at) return { color: STATUS_COLOR.done, label: "Done", badge: "bk-done-b" };
   if (isFirstVisit(b, fv)) return { color: STATUS_COLOR.new, label: "New Client", badge: "bk-new" };
   if (b.status === "confirmed") return { color: STATUS_COLOR.confirmed, label: "Confirmed", badge: "" };
   return { color: STATUS_COLOR.pending, label: "Pending", badge: "gold" };
@@ -33,6 +34,7 @@ export function StatusLegend() {
   return (
     <div className="bk-legend">
       <span><i style={{ background: STATUS_COLOR.confirmed }} />Confirmed</span>
+      <span><i style={{ background: STATUS_COLOR.done }} />Done</span>
       <span><i style={{ background: STATUS_COLOR.pending }} />Pending</span>
       <span><i style={{ background: STATUS_COLOR.new }} />New Client</span>
       <span><i style={{ background: STATUS_COLOR.cancelled }} />Cancelled</span>
@@ -441,6 +443,9 @@ button.bk-appt .nt { font-style: italic; color: var(--ink-soft); }
 .bk-newc { margin-top: 12px; background: var(--rose-soft); color: var(--ink-2); border-radius: 16px; padding: 12px 14px; font-size: 15.5px; }
 .bk-newc strong { display: flex; align-items: center; gap: 6px; font-size: 16px; margin-bottom: 2px; color: color-mix(in srgb, var(--rose) 60%, var(--ink)); }
 .bk-loyal { background: linear-gradient(135deg, var(--card), var(--gold-soft)); color: var(--gold-ink); border-radius: 20px; padding: 14px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 35%, transparent); }
+button.bs-complete { min-height: 54px; font-size: 16.5px; border-radius: 18px; gap: 8px; }
+.bk-done { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 16px; background: var(--teal-soft); color: var(--teal); font-weight: 650; }
+.badge.bk-done-b { background: var(--paper-2); color: var(--ink-2); }
 .bk-fee { border: 1.5px solid color-mix(in srgb, var(--gold) 50%, transparent); background: var(--gold-soft); color: var(--ink-2); border-radius: 18px; padding: 14px 16px; font-size: 15.5px; animation: pop .2s var(--ease) both; }
 .bk-fee strong { display: flex; align-items: center; gap: 6px; font-size: 16px; margin-bottom: 2px; color: var(--gold-ink); }
 .bk-latebox { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: 16px; background: var(--paper); cursor: pointer; font-size: 15.5px; }

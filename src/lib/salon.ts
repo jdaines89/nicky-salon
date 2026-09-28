@@ -301,7 +301,8 @@ export async function fetchAll<T>(buildQuery: () => RangeQuery<T>): Promise<T[]>
   let offset = 0;
   for (;;) {
     const { data, error } = await buildQuery().range(offset, offset + PAGE - 1);
-    if (error) throw error;
+    // PostgREST errors are plain objects: wrap them so callers get a message, not "[object Object]".
+    if (error) throw Object.assign(new Error((error as { message?: string }).message || "The database didn't answer."), { cause: error });
     const batch = data || [];
     rows.push(...batch);
     if (batch.length < PAGE) return rows;

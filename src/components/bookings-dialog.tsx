@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CalendarClock, Camera, ChevronDown, Gift, Lock, Sparkles, Ticket, Trash2, UserRound } from "lucide-react";
+import { AlertTriangle, CalendarClock, Camera, CheckCircle2, ChevronDown, Gift, Lock, Sparkles, Ticket, Trash2, UserRound } from "lucide-react";
 import { BOOKING_PHOTOS_CSS, BookingPhotos } from "@/components/clients-photos";
 import { useSalon } from "@/components/data";
 import { rand, Seg, Sheet } from "@/components/ui";
@@ -170,8 +170,16 @@ export function BookingSheet({ booking, draft, onClose, onDone }: {
     if (!earliest || key < earliest.slice(0, key.length)) newClient = { kind: "no-history", clientId: client.id };
   }
 
-  async function save() {
+  // A visit can be completed once its day has come, if it went ahead.
+  const canComplete = Boolean(booking && !booking.completed_at && date <= today && status !== "cancelled" && status !== "no-show");
+
+  /** `complete`: the service is done. Needs a payment method; keeps the booking 'confirmed' so money rules are unchanged. */
+  async function save(complete = false) {
     setError(null);
+    if (complete && pay === "none") {
+      setDetails(true);
+      return setError("How did she pay? Pick it under Paid with, then tap Complete visit again.");
+    }
     if (!isEdit && (choice.kind === "none" || (choice.kind === "new" && !choice.name.trim()))) {
       return setError("Pick a client, or add a new one.");
     }
@@ -183,7 +191,7 @@ export function BookingSheet({ booking, draft, onClose, onDone }: {
     if (duration < 5) return setError("Duration must be at least 5 minutes.");
     const vValue = voucherValue.trim() === "" ? net : Math.max(0, toInt(voucherValue));
     if (pay === "voucher" && !voucherCode.trim()) return setError("Enter the voucher code.");
-    if (clash && !confirmClash) {
+    if (clash && !confirmClash && !complete) {
       setConfirmClash(true);
       return;
     }
@@ -198,6 +206,7 @@ export function BookingSheet({ booking, draft, onClose, onDone }: {
       voucher_code: pay === "voucher" ? voucherCode.trim() || null : null,
       voucher_value: pay === "voucher" ? vValue : null,
       ...late,
+      ...(complete ? { status: "confirmed" as const, completed_at: new Date().toISOString() } : {}),
     };
     const charged = [...feeLineIds].filter((id) => owed.some((b) => b.id === id));
     setBusy(true);
@@ -211,7 +220,10 @@ export function BookingSheet({ booking, draft, onClose, onDone }: {
         const hadFees = bookings.filter((b) => b.late_fee_booking_id === booking.id).map((b) => b.id);
         if (hadFees.length && !lines.some((l) => !l.service_id && l.name.startsWith(LATE_FEE_LABEL))) await settleLateFees(hadFees, "owed", null);
         await reload();
-        onDone("Booking updated.");
+        if (complete) {
+          applaud();
+          onDone(`Visit complete: ${rand(net)}${pay === "voucher" ? " by voucher" : ` by ${(PAYMENT_LABELS[pay] ?? pay).toLowerCase()}`}.`);
+        } else onDone("Booking updated.");
       } else {
         let c = client;
         if (!c && choice.kind === "new") c = await addClient({ name: choice.name.trim(), phone: choice.phone.trim() || null });
@@ -445,9 +457,24 @@ export function BookingSheet({ booking, draft, onClose, onDone }: {
                 </div>
                 <div className="bs-total">{rand(net)}{disc > 0 && <s>{rand(gross)}</s>}</div>
               </div>
+              {booking?.completed_at && (
+                <div className="bk-done"><CheckCircle2 size={18} />
+                  <span className="grow">Completed {new Date(booking.completed_at).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                  <button type="button" className="linkish small" disabled={busy} onClick={async () => {
+                    setBusy(true);
+                    try { await updateBooking(booking.id, { completed_at: null }); await reload(); onDone("Marked as not done yet."); onClose(); }
+                    catch (e) { setError(`Couldn't change it: ${e instanceof Error ? e.message : String(e)}`); setBusy(false); }
+                  }}>Mark not done</button>
+                </div>
+              )}
+              {canComplete && (
+                <button type="button" className="gold bs-complete" disabled={busy} onClick={() => save(true)}>
+                  <CheckCircle2 size={20} />{busy ? "Saving…" : `Complete visit · ${rand(net)}`}
+                </button>
+              )}
               <div className="bk-actions">
                 {isEdit && <button type="button" className="danger icon" aria-label="Delete booking" disabled={busy} onClick={() => setConfirmDelete(true)}><Trash2 size={19} /></button>}
-                <button type="button" className={confirmClash && clash ? "bs-go clash" : "bs-go"} disabled={busy} onClick={save}>
+                <button type="button" className={confirmClash && clash ? "bs-go clash" : "bs-go"} disabled={busy} onClick={() => save()}>
                   {busy ? "Saving…" : confirmClash && clash ? "Yes, double-book" : isEdit ? "Save changes" : time ? `Book for ${time}` : "Book"}
                 </button>
               </div>
