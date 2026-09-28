@@ -11,7 +11,8 @@ export type ISODate = string; // 'YYYY-MM-DD'
 export type ISOTime = string; // 'HH:MM:SS' (or 'HH:MM')
 
 export type BookingStatus = "confirmed" | "pending" | "cancelled" | "no-show";
-export type PaymentMethod = "cash" | "card" | "transfer";
+export type PaymentMethod = "cash" | "card" | "transfer" | "voucher";
+export type LateFeeStatus = "owed" | "charged" | "waived";
 export type RecurringEndType = "count" | "until";
 
 /**
@@ -42,6 +43,19 @@ export interface Service {
   price: number;
   duration_minutes: number;
   active: boolean | null; // soft-delete flag
+  /** Promotions only: offered for appointments on these dates (either end may be open). */
+  promo_start?: ISODate | null;
+  promo_end?: ISODate | null;
+  created_at: string | null;
+}
+
+/** Time Nicky has blocked out (lunch, an errand): no bookings are offered in it. */
+export interface TimeLock {
+  id: string;
+  date: ISODate;
+  time: ISOTime;
+  duration_minutes: number;
+  label: string;
   created_at: string | null;
 }
 
@@ -65,7 +79,10 @@ export interface BookingService {
   booking_id: string;
   service_id: string | null;
   service_name: string;
+  /** The line's total: unit price x quantity. */
   price_at_time: number;
+  /** How many (nail art per nail x 5). 1 for every line booked before quantities existed. */
+  quantity?: number | null;
 }
 
 export interface Booking {
@@ -80,6 +97,13 @@ export interface Booking {
   tip: number; // gratuity, never counted as revenue
   notes: string | null;
   payment_method: PaymentMethod | null; // null = never recorded
+  voucher_code?: string | null;
+  voucher_value?: number | null;
+  /** Cancelled with under 24 hours' notice, not an emergency. */
+  late_cancel?: boolean | null;
+  late_fee?: number | null; // 30% of the cancelled visit, fixed when flagged
+  late_fee_status?: LateFeeStatus | null;
+  late_fee_booking_id?: string | null; // the later visit the fee was added to
   created_at: string | null;
 }
 
@@ -103,7 +127,7 @@ export interface ClientPhoto {
 // ---------------------------------------------------------------------------
 
 export type ServiceLine = Pick<BookingService, "service_name" | "price_at_time"> &
-  Partial<Pick<BookingService, "service_id">>;
+  Partial<Pick<BookingService, "service_id" | "quantity">>;
 
 export interface BookingLike {
   id: string;

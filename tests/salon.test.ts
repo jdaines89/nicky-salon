@@ -600,3 +600,87 @@ describe("port helpers", () => {
     expect(paymentLabel({ payment_method: "constructor" })).toBe("Not recorded");
   });
 });
+
+// ---------------------------------------------------------------------------
+// 2026-09-28: quantities, vouchers, late cancellations, promotions, blocked time
+// ---------------------------------------------------------------------------
+import {
+  bookingNet as net28, bookingTitle as title28, findCollision as clash28, freeGaps as gaps28, isPromo, lateFeeFor,
+  lockAsBooking, offeredOn, owedLateFees, paymentLabel as payLabel28, paymentShort, promoState,
+} from "@/lib/salon";
+import { lockDates } from "@/components/bookings-locks";
+
+describe("quantities", () => {
+  it("price_at_time is the line total, so revenue is a plain sum", () => {
+    const b = { booking_services: [{ service_name: "Gel Overlay", price_at_time: 300 }, { service_name: "Nail art", price_at_time: 40, quantity: 4 }], discount: 0 };
+    expect(net28(b)).toBe(340);
+  });
+  it("the title shows how many", () => {
+    expect(title28({ booking_services: [{ service_name: "Nail art", price_at_time: 50, quantity: 5 }] })).toBe("Nail art x5");
+    expect(title28({ booking_services: [{ service_name: "Gel", price_at_time: 300, quantity: 1 }] })).toBe("Gel");
+  });
+});
+
+describe("vouchers", () => {
+  it("are a way to pay", () => {
+    expect(payLabel28({ payment_method: "voucher" })).toBe("Voucher");
+    expect(paymentShort({ payment_method: "transfer" })).toBe("EFT");
+    expect(paymentShort({ payment_method: null })).toBeNull();
+  });
+});
+
+describe("late cancellations", () => {
+  it("the fee is 30% of what the visit was worth, to the Rand", () => {
+    expect(lateFeeFor({ booking_services: [{ service_name: "Gel", price_at_time: 300 }], discount: 0 })).toBe(90);
+    expect(lateFeeFor({ booking_services: [{ service_name: "Gel", price_at_time: 285 }], discount: 0 })).toBe(86);
+    expect(lateFeeFor({ booking_services: [{ service_name: "Gel", price_at_time: 300 }], discount: 100 })).toBe(60);
+  });
+  it("only cancelled visits still marked owed are owed, oldest first", () => {
+    const b = (id: string, date: string, status: string, fee: string | null, client = "c1") =>
+      ({ id, client_id: client, date, time: "10:00", status, late_fee_status: fee });
+    const all = [b("3", "2026-09-20", "cancelled", "owed"), b("1", "2026-09-10", "cancelled", "owed"),
+      b("2", "2026-09-12", "cancelled", "waived"), b("4", "2026-09-14", "confirmed", null),
+      b("5", "2026-09-15", "cancelled", "owed", "c2")];
+    expect(owedLateFees(all, "c1").map((x) => x.id)).toEqual(["1", "3"]);
+    expect(owedLateFees(all, null)).toEqual([]);
+  });
+});
+
+describe("promotions", () => {
+  const promo = { category: "Promotions", promo_start: "2026-10-01", promo_end: "2026-10-31" };
+  it("are offered only inside their dates", () => {
+    expect(offeredOn(promo, "2026-09-30")).toBe(false);
+    expect(offeredOn(promo, "2026-10-01")).toBe(true);
+    expect(offeredOn(promo, "2026-10-31")).toBe(true);
+    expect(offeredOn(promo, "2026-11-01")).toBe(false);
+    expect(offeredOn({ category: "Waxing", promo_end: "2020-01-01" }, "2026-11-01")).toBe(true);
+    expect(offeredOn({ category: "Promotions" }, "2030-01-01")).toBe(true);
+  });
+  it("old package rows count as promotions", () => {
+    expect(isPromo({ category: "Packages" })).toBe(true);
+    expect(isPromo({ category: "Gel Overlays" })).toBe(false);
+  });
+  it("know whether they're running", () => {
+    expect(promoState(promo, "2026-09-28")).toBe("upcoming");
+    expect(promoState(promo, "2026-10-15")).toBe("running");
+    expect(promoState(promo, "2026-11-01")).toBe("ended");
+  });
+});
+
+describe("blocked time", () => {
+  const lunch = lockAsBooking({ id: "x", date: "2026-10-01", time: "13:00", duration_minutes: 45, label: "Lunch" });
+  it("takes its time out of the day like a booking", () => {
+    expect(gaps28([lunch])).toEqual([[480, 780], [825, 1140]]);
+    expect(clash28([lunch], "2026-10-01", "13:30", 30)?.notes).toBe("Lunch");
+    expect(clash28([lunch], "2026-10-01", "13:45", 30)).toBeNull();
+  });
+  it("is worth nothing", () => {
+    expect(net28(lunch)).toBe(0);
+  });
+  it("repeats for the rest of the week or weekly", () => {
+    expect(lockDates("2026-10-01", "once")).toEqual(["2026-10-01"]);
+    expect(lockDates("2026-10-01", "week")).toEqual(["2026-10-01", "2026-10-02", "2026-10-03"]); // Thu to Sat
+    expect(lockDates("2026-10-04", "week")).toEqual(["2026-10-04"]); // a Sunday stays one day
+    expect(lockDates("2026-10-01", "weekly")).toEqual(["2026-10-01", "2026-10-08", "2026-10-15", "2026-10-22"]);
+  });
+});

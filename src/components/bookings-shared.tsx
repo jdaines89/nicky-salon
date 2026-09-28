@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronDown, Package, Plus, RotateCcw, Search, Sparkles, UserPlus, X } from "lucide-react";
+import { ChevronDown, Minus, Plus, Receipt, RotateCcw, Search, Sparkles, Tag, UserPlus, X } from "lucide-react";
 import { rand } from "@/components/ui";
-import { firstVisitMap, isFirstVisit, PACKAGE_CATEGORY, toMinutes, validPhone } from "@/lib/salon";
+import { firstVisitMap, isFirstVisit, isPromo, offeredOn, PROMO_CATEGORY, toMinutes, validPhone } from "@/lib/salon";
 import type { BookingWithServices, Client, Service } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
@@ -52,22 +52,23 @@ export function endTime(b: { time: string; duration_minutes?: number | null }): 
 }
 
 // ---------------------------------------------------------------------------
-// Service options: packages float to the top with a 📦 label (the snapshotted
-// service_name stays clean); new bookings default to the first regular one.
+// Service options: promotions float to the top (the snapshotted service_name
+// stays clean), and only the ones running on the appointment's date are offered.
 // ---------------------------------------------------------------------------
 
 export interface SvcOpt { id: string; name: string; price: number; duration: number; category: string; pkg: boolean }
 
-export function serviceOptions(services: Service[]): SvcOpt[] {
+/** Active services bookable on `date`: a promotion outside its dates isn't offered. */
+export function serviceOptions(services: Service[], date?: string): SvcOpt[] {
   const opts = services
-    .filter((s) => s.active !== false)
-    .map((s) => ({ id: s.id, name: s.name, price: Number(s.price), duration: s.duration_minutes, category: s.category, pkg: s.category === PACKAGE_CATEGORY }));
-  // Stable sort: packages first, everything else keeps category/name order.
+    .filter((s) => s.active !== false && (!date || offeredOn(s, date)))
+    .map((s) => ({ id: s.id, name: s.name, price: Number(s.price), duration: s.duration_minutes, category: s.category, pkg: isPromo(s) }));
+  // Stable sort: promotions first, everything else keeps category/name order.
   return opts.map((o, i) => [o, i] as const).sort(([a, ia], [b, ib]) => (a.pkg === b.pkg ? ia - ib : a.pkg ? -1 : 1)).map(([o]) => o);
 }
 
 export function optLabel(o: SvcOpt): string {
-  return `${o.pkg ? "📦 " : ""}${o.name} — R${Math.round(o.price)} · ${o.duration} min`;
+  return `${o.name} — R${Math.round(o.price)} · ${o.duration} min`;
 }
 
 export function defaultServiceIds(opts: SvcOpt[]): string[] {
@@ -75,11 +76,29 @@ export function defaultServiceIds(opts: SvcOpt[]): string[] {
   return first ? [first.id] : [];
 }
 
-/** One chosen service line. Existing lines keep their snapshotted name and price. */
-export interface Line { key: string; service_id: string | null; name: string; price: number; duration: number; pkg: boolean }
+/**
+ * One chosen service line. Existing lines keep their snapshotted name and price.
+ * `price` and `duration` are for one; `qty` multiplies both (nail art x 5).
+ */
+export interface Line { key: string; service_id: string | null; name: string; price: number; duration: number; pkg: boolean; qty: number }
+
+export const lineTotal = (l: Pick<Line, "price" | "qty">) => l.price * l.qty;
+export const lineMinutes = (l: Pick<Line, "duration" | "qty">) => l.duration * l.qty;
+export const MAX_QTY = 20;
 
 export function lineFromOpt(o: SvcOpt): Line {
-  return { key: `${o.id}-${Math.random().toString(36).slice(2, 7)}`, service_id: o.id, name: o.name, price: o.price, duration: o.duration, pkg: o.pkg };
+  return { key: `${o.id}-${Math.random().toString(36).slice(2, 7)}`, service_id: o.id, name: o.name, price: o.price, duration: o.duration, pkg: o.pkg, qty: 1 };
+}
+
+/** How many of one service: minus and plus, no keyboard. */
+function QtyStepper({ l, onChange }: { l: Line; onChange: (qty: number) => void }) {
+  return (
+    <div className="sp-qty" role="group" aria-label={`How many ${l.name}`}>
+      <button type="button" aria-label="One fewer" disabled={l.qty <= 1} onClick={() => onChange(l.qty - 1)}><Minus size={16} /></button>
+      <b aria-live="polite">{l.qty}</b>
+      <button type="button" aria-label="One more" disabled={l.qty >= MAX_QTY} onClick={() => onChange(l.qty + 1)}><Plus size={16} /></button>
+    </div>
+  );
 }
 
 /**
@@ -103,22 +122,23 @@ export function ServicePicker({ opts, lines, onChange, usual }: {
   const groups = useMemo(() => {
     const out = new Map<string, SvcOpt[]>();
     for (const o of opts) {
-      const g = o.pkg ? PACKAGE_CATEGORY : o.category;
+      const g = o.pkg ? PROMO_CATEGORY : o.category;
       out.set(g, [...(out.get(g) ?? []), o]);
     }
     return [...out.entries()];
   }, [opts]);
   const needle = q.trim().toLowerCase();
   const found = needle ? opts.filter((o) => !chosenIds.has(o.id) && (o.name.toLowerCase().includes(needle) || o.category.toLowerCase().includes(needle))) : [];
-  const total = lines.reduce((s, l) => s + l.price, 0);
+  const total = lines.reduce((s, l) => s + lineTotal(l), 0);
+  const setQty = (key: string, qty: number) => onChange(lines.map((l) => (l.key === key ? { ...l, qty } : l)));
   const pick = (o: SvcOpt) => { onChange([...lines, lineFromOpt(o)]); setQ(""); setOpen(false); };
   const usualOk = !lines.length && usual && usual.length > 0;
 
   const option = (o: SvcOpt, showCat = false) => (
     <button type="button" key={o.id} className="sp-opt" onClick={() => pick(o)}>
       <div className="grow">
-        <div className="sp-name">{o.pkg && <Package size={14} style={{ verticalAlign: -2, marginRight: 4, color: "var(--gold-2)" }} />}{o.name}</div>
-        <div className="small muted">{o.duration} min{showCat ? ` · ${o.pkg ? PACKAGE_CATEGORY : o.category}` : ""}</div>
+        <div className="sp-name">{o.pkg && <Tag size={14} style={{ verticalAlign: -2, marginRight: 4, color: "var(--gold-2)" }} />}{o.name}</div>
+        <div className="small muted">{o.duration} min{showCat ? ` · ${o.pkg ? PROMO_CATEGORY : o.category}` : ""}</div>
       </div>
       <span className="num sp-price">{rand(o.price)}</span>
       <span className="sp-add" aria-hidden><Plus size={16} /></span>
@@ -131,17 +151,22 @@ export function ServicePicker({ opts, lines, onChange, usual }: {
         <div className="sp-chosen">
           {lines.map((l) => (
             <div key={l.key} className="sp-line">
-              <span className="sp-ico" aria-hidden>{l.pkg ? <Package size={17} /> : <Sparkles size={17} />}</span>
+              <span className="sp-ico" aria-hidden>{l.pkg ? <Tag size={17} /> : l.service_id ? <Sparkles size={17} /> : <Receipt size={17} />}</span>
               <div className="grow">
                 <div className="sp-name">{l.name}</div>
-                <div className="small muted">{l.duration ? `${l.duration} min` : "Time not set"}</div>
+                <div className="sp-sub">
+                  <span className="small muted">
+                    {l.qty > 1 ? `${l.qty} × ${rand(l.price)}` : !l.service_id ? "Added charge" : l.duration ? `${l.duration} min` : "Time not set"}
+                  </span>
+                  {l.service_id && <QtyStepper l={l} onChange={(q) => setQty(l.key, q)} />}
+                </div>
               </div>
-              <b className="num">{rand(l.price)}</b>
+              <b className="num sp-lt">{rand(lineTotal(l))}</b>
               <button type="button" className="sp-x" aria-label={`Remove ${l.name}`}
                 onClick={() => { const next = lines.filter((x) => x.key !== l.key); onChange(next); if (!next.length) setOpen(true); }}><X size={16} /></button>
             </div>
           ))}
-          {lines.length > 1 && <div className="sp-sum"><span>{lines.length} services</span><b className="num">{rand(total)}</b></div>}
+          {(lines.length > 1 || lines.some((l) => l.qty > 1)) && <div className="sp-sum"><span>{lines.length} {lines.length === 1 ? "service" : "services"}</span><b className="num">{rand(total)}</b></div>}
         </div>
       )}
       {!open ? (
@@ -177,7 +202,7 @@ export function ServicePicker({ opts, lines, onChange, usual }: {
                   <div key={g} className={`sp-cat${isOpen ? " open" : ""}`}>
                     <button type="button" className="sp-cat-h" aria-expanded={isOpen} onClick={() => setCat(isOpen ? null : g)}>
                       <span className="grow">
-                        <span className="sp-name">{g === PACKAGE_CATEGORY && <Package size={15} style={{ verticalAlign: -2, marginRight: 6, color: "var(--gold-2)" }} />}{g}</span>
+                        <span className="sp-name">{g === PROMO_CATEGORY && <Tag size={15} style={{ verticalAlign: -2, marginRight: 6, color: "var(--gold-2)" }} />}{g}</span>
                         <span className="small muted">{list.length} {list.length === 1 ? "service" : "services"} · from {rand(from)}</span>
                       </span>
                       <ChevronDown size={20} className="sp-chev" />
@@ -301,7 +326,13 @@ export function ClientPicker({ clients, byId, value, onChange }: {
 
 export const BOOKINGS_CSS = `
 .sp-chosen { display: flex; flex-direction: column; gap: 8px; }
-.sp-line { display: flex; align-items: center; gap: 12px; background: var(--paper); border-radius: 16px; padding: 10px 8px 10px 12px; animation: pop .2s var(--ease) both; }
+.sp-sub { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.sp-qty { display: flex; align-items: center; gap: 2px; background: var(--card); border-radius: 999px; padding: 2px; flex: none; box-shadow: inset 0 0 0 1px var(--line-2); }
+.sp-qty button { width: 36px; min-height: 36px; padding: 0; border-radius: 50%; background: none; color: var(--teal-2); border: 0; }
+.sp-qty button:disabled { color: var(--ink-faint); opacity: 1; }
+.sp-qty b { min-width: 20px; text-align: center; font-variant-numeric: tabular-nums; font-size: 16px; }
+.sp-lt { min-width: 52px; text-align: right; }
+.sp-line { display: flex; align-items: center; gap: 10px; background: var(--paper); border-radius: 16px; padding: 10px 8px 10px 12px; animation: pop .2s var(--ease) both; }
 .sp-ico { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; background: var(--gold-soft); color: var(--gold-2); flex: none; }
 .sp-name { font-weight: 650; line-height: 1.3; }
 button.sp-x { width: 34px; min-height: 34px; padding: 0; border-radius: 50%; background: none; color: var(--ink-soft); border: 0; }
@@ -396,6 +427,8 @@ button.bk-appt .n { font-weight: 700; white-space: nowrap; overflow: hidden; tex
 button.bk-appt .n .nm { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 button.bk-appt.short .w { flex: 1 1 0; min-width: 0; }
 button.bk-appt .n em { font-style: normal; font-size: 12px; font-weight: 700; color: color-mix(in srgb, var(--c) 55%, var(--ink)); background: var(--card); padding: 0 6px; border-radius: 99px; flex: none; }
+button.bk-appt:not(.short) .n { width: 100%; }
+button.bk-appt .n em.amt { margin-left: auto; background: color-mix(in srgb, var(--c) 10%, var(--card)); color: var(--ink); font-size: 12.5px; }
 button.bk-appt .w { font-weight: 500; font-size: 13.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 button.bk-appt .nt { font-style: italic; color: var(--ink-soft); }
 .bk-now { position: absolute; left: -6px; right: 0; height: 2px; background: var(--danger); z-index: 5; pointer-events: none; }
@@ -408,6 +441,11 @@ button.bk-appt .nt { font-style: italic; color: var(--ink-soft); }
 .bk-newc { margin-top: 12px; background: var(--rose-soft); color: var(--ink-2); border-radius: 16px; padding: 12px 14px; font-size: 15.5px; }
 .bk-newc strong { display: flex; align-items: center; gap: 6px; font-size: 16px; margin-bottom: 2px; color: color-mix(in srgb, var(--rose) 60%, var(--ink)); }
 .bk-loyal { background: linear-gradient(135deg, var(--card), var(--gold-soft)); color: var(--gold-ink); border-radius: 20px; padding: 14px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 35%, transparent); }
+.bk-fee { border: 1.5px solid color-mix(in srgb, var(--gold) 50%, transparent); background: var(--gold-soft); color: var(--ink-2); border-radius: 18px; padding: 14px 16px; font-size: 15.5px; animation: pop .2s var(--ease) both; }
+.bk-fee strong { display: flex; align-items: center; gap: 6px; font-size: 16px; margin-bottom: 2px; color: var(--gold-ink); }
+.bk-latebox { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: 16px; background: var(--paper); cursor: pointer; font-size: 15.5px; }
+.bk-latebox input { width: 22px; height: 22px; min-height: 0; margin: 2px 0 0; accent-color: var(--teal); flex: none; }
+.bk-latebox > svg { flex: none; color: var(--ink-soft); margin-top: 2px; }
 .bk-loyal > svg { flex: none; color: var(--gold-2); }
 .bk-foot { position: sticky; bottom: calc(-18px - env(safe-area-inset-bottom)); background: var(--paper); margin: 0 -16px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
   display: flex; flex-direction: column; gap: 10px; z-index: 3; box-shadow: 0 -10px 24px -18px rgba(21,32,30,0.35); border-radius: 22px 22px 0 0; }

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { DatePick } from "@/components/when-picker";
 import { addService } from "@/lib/db";
-import { PACKAGE_CATEGORY } from "@/lib/salon";
+import { monthBounds, PROMO_CATEGORY } from "@/lib/salon";
 import type { Service } from "@/lib/types";
 
 function label(s: Service) {
@@ -10,19 +11,23 @@ function label(s: Service) {
 }
 
 /**
- * Build a package deal: add services one at a time (a multi-select is unusable
+ * Build a promotion: add services one at a time (a multi-select is unusable
  * on a phone, the keyboard covers the options), see what they cost separately,
- * and price the bundle. The price is fixed at creation: it is a plain services
- * row under "Packages" and never follows its components afterwards, so repricing
- * a component never silently reprices a package.
+ * price the deal, and say which dates it runs. Outside those dates it isn't
+ * offered in the booking form. The price is fixed at creation: it is a plain
+ * services row under "Promotions" and never follows its components afterwards,
+ * so repricing a component never silently reprices a promotion.
  */
-export function ServicesPackageBuilder({ regular, onCreated, onError }: {
+export function ServicesPromotionBuilder({ regular, today, onCreated, onError }: {
   regular: Service[];
+  today: string;
   onCreated: (name: string) => Promise<void>;
   onError: (msg: string) => void;
 }) {
   const [ids, setIds] = useState<string[]>([]);
   const [name, setName] = useState("");
+  const [start, setStart] = useState<string>(today);
+  const [end, setEnd] = useState<string>(() => monthBounds(today)[1]);
   // The suggested price/duration follow the chosen services until she types her
   // own; a typed value is kept only for the selection it was typed against.
   const [priceEdit, setPriceEdit] = useState<{ key: string; v: string } | null>(null);
@@ -43,19 +48,20 @@ export function ServicesPackageBuilder({ regular, onCreated, onError }: {
 
   async function create() {
     const p = Number(price), d = Number(dur);
-    if (chosen.length < 2) return setErr("Pick at least two services to make a package.");
-    if (!name.trim()) return setErr("Give the package a name.");
-    if (!Number.isFinite(p) || p < 0 || price.trim() === "") return setErr("Enter a package price of R0 or more.");
+    if (chosen.length < 1) return setErr("Pick the service or services this promotion is for.");
+    if (!name.trim()) return setErr("Give the promotion a name.");
+    if (!Number.isFinite(p) || p < 0 || price.trim() === "") return setErr("Enter a promotion price of R0 or more.");
     if (!Number.isInteger(d) || d < 5) return setErr("Duration must be at least 5 minutes.");
+    if (end < start) return setErr("The last day can't be before the first day.");
     setErr(null);
     setBusy(true);
     try {
       const n = name.trim();
-      await addService({ category: PACKAGE_CATEGORY, name: n, price: Math.round(p), duration_minutes: d });
+      await addService({ category: PROMO_CATEGORY, name: n, price: Math.round(p), duration_minutes: d, promo_start: start, promo_end: end });
       setIds([]); setName(""); setPriceEdit(null); setDurEdit(null);
       await onCreated(n);
     } catch (e) {
-      onError(`Couldn't create the package: ${e instanceof Error ? e.message : String(e)}`);
+      onError(`Couldn't create the promotion: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setBusy(false);
     }
@@ -64,7 +70,7 @@ export function ServicesPackageBuilder({ regular, onCreated, onError }: {
   return (
     <div className="stack" style={{ marginTop: 8 }}>
       <div>
-        <h3>Services in this package</h3>
+        <h3>What&apos;s included</h3>
         {chosen.length ? (
           <div className="list">
             {chosen.map((s) => (
@@ -87,11 +93,11 @@ export function ServicesPackageBuilder({ regular, onCreated, onError }: {
       </label>
       {chosen.length > 0 && (
         <p className="small muted" style={{ margin: 0 }}>
-          Individually: <b>R{Math.round(indivTotal)}</b> · {indivDur} min. Price the bundle below it and the deal sells itself.
+          Normally: <b>R{Math.round(indivTotal)}</b> · {indivDur} min. Price the promotion below it and the deal sells itself.
         </p>
       )}
       <div className="fields2">
-        <label className="field">Package price (R)
+        <label className="field">Promotion price (R)
           <input type="number" inputMode="numeric" min={0} step={10} value={price}
             onChange={(e) => setPriceEdit({ key: selKey, v: e.target.value })} />
         </label>
@@ -100,11 +106,18 @@ export function ServicesPackageBuilder({ regular, onCreated, onError }: {
             onChange={(e) => setDurEdit({ key: selKey, v: e.target.value })} />
         </label>
       </div>
-      <label className="field">Package name
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Gel Mani + Pedi Combo" autoCapitalize="words" />
+      <div className="field">Runs from
+        <DatePick value={start} onChange={setStart} today={today} />
+      </div>
+      <div className="field">Until (last day)
+        <DatePick value={end} onChange={setEnd} today={today} />
+      </div>
+      <p className="small muted" style={{ margin: "-4px 0 0" }}>Only offered for appointments on these dates.</p>
+      <label className="field">Promotion name
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Spring Gel Mani + Pedi" autoCapitalize="words" />
       </label>
       {err && <div className="notice danger" style={{ marginBottom: 0 }}>{err}</div>}
-      <button type="button" className="gold" onClick={create} disabled={busy}>+ Create package</button>
+      <button type="button" className="gold" onClick={create} disabled={busy}>+ Create promotion</button>
     </div>
   );
 }

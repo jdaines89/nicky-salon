@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Check, ChevronDown, Package, Pencil } from "lucide-react";
+import { Check, ChevronDown, Pencil, Tag } from "lucide-react";
 import { useSalon } from "@/components/data";
 import { rand, Sheet, useToast } from "@/components/ui";
-import { ServicesPackageBuilder } from "@/components/services-package-builder";
+import { ServicesPromotionBuilder } from "@/components/services-promotion-builder";
+import { DatePick, WHEN_CSS } from "@/components/when-picker";
 import { addService, updateService } from "@/lib/db";
-import { PACKAGE_CATEGORY } from "@/lib/salon";
+import { fmtDayMonShort, isPromo, PROMO_CATEGORY, promoState } from "@/lib/salon";
 import type { Service } from "@/lib/types";
 
 const NEW_CAT = "__new__";
@@ -16,11 +17,22 @@ function errText(e: unknown) {
 }
 
 /** One price-list line. In edit mode the whole row is a big tap target that opens the edit sheet. */
-function ServiceRow({ s, editing, onEdit }: { s: Service; editing: boolean; onEdit: (s: Service) => void }) {
+function promoDates(s: Service): string {
+  const a = s.promo_start ? fmtDayMonShort(s.promo_start) : null, b = s.promo_end ? fmtDayMonShort(s.promo_end) : null;
+  return a && b ? `${a} – ${b}` : a ? `From ${a}` : b ? `Until ${b}` : "No end date";
+}
+
+function ServiceRow({ s, editing, onEdit, today }: { s: Service; editing: boolean; onEdit: (s: Service) => void; today?: string }) {
+  const state = today && isPromo(s) ? promoState(s, today) : null;
   const body = (
     <>
       <div className="grow">
         <div className="title">{s.name}</div>
+        {state && (
+          <div className="meta">
+            {promoDates(s)}{state === "upcoming" ? " · starts soon" : state === "ended" ? " · ended" : ""}
+          </div>
+        )}
       </div>
       <span className="small muted" style={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
         {s.duration_minutes} min
@@ -38,7 +50,8 @@ function ServiceRow({ s, editing, onEdit }: { s: Service; editing: boolean; onEd
 }
 
 export default function Services() {
-  const { services, reload } = useSalon();
+  const { services, reload, today } = useSalon();
+  const [showEnded, setShowEnded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [toast, say] = useToast();
   const [edit, setEdit] = useState<Service | null>(null);
@@ -47,10 +60,12 @@ export default function Services() {
   // Retired services stay in the table (past bookings snapshot their names and
   // prices) but never appear on the price list.
   const active = services.filter((s) => s.active === true);
-  const packages = active.filter((s) => s.category === PACKAGE_CATEGORY);
+  const promos = active.filter(isPromo);
+  const current = promos.filter((s) => promoState(s, today) !== "ended");
+  const ended = promos.filter((s) => promoState(s, today) === "ended");
   const grouped = new Map<string, Service[]>();
   for (const s of active) {
-    if (s.category === PACKAGE_CATEGORY) continue;
+    if (isPromo(s)) continue;
     if (!grouped.has(s.category)) grouped.set(s.category, []);
     grouped.get(s.category)!.push(s);
   }
@@ -73,25 +88,39 @@ export default function Services() {
 
       {!categories.length && <div className="notice">No services yet. Tap Edit services and add your first one.</div>}
 
-      {/* Packages pinned first: what a client peeking at the screen, or Nicky quoting, sees first. */}
+      {/* Promotions pinned first: what a client peeking at the screen, or Nicky quoting, sees first. */}
+      <style>{WHEN_CSS}</style>
       <div className="card">
-        <h2><Package size={18} />Package deals</h2>
-        <p className="sub">Bundle services into one price. Packages show up in the booking form like any service.</p>
-        {packages.length ? (
+        <h2><Tag size={18} />Promotions</h2>
+        <p className="sub">A special price for a set time. Each one shows up in the booking form only for appointments between its first and last day.</p>
+        {current.length ? (
           <div className="list nw">
-            {packages.map((s) => <ServiceRow key={s.id} s={s} editing={editing} onEdit={setEdit} />)}
+            {current.map((s) => <ServiceRow key={s.id} s={s} editing={editing} onEdit={setEdit} today={today} />)}
           </div>
         ) : (
           <p className="muted small" style={{ margin: 0 }}>
-            {editing ? "No packages yet. Build your first one below." : "No packages yet. Tap Edit services to build one."}
+            {editing ? "No promotions running. Build one below." : "No promotions running. Tap Edit to build one."}
           </p>
         )}
+        {ended.length > 0 && (
+          <>
+            <button type="button" className="linkish small" style={{ marginTop: 10 }} onClick={() => setShowEnded(!showEnded)}>
+              {showEnded ? "Hide" : "Show"} {ended.length} ended {ended.length === 1 ? "promotion" : "promotions"}
+            </button>
+            {showEnded && (
+              <div className="list nw" style={{ opacity: 0.75 }}>
+                {ended.map((s) => <ServiceRow key={s.id} s={s} editing={editing} onEdit={setEdit} today={today} />)}
+              </div>
+            )}
+          </>
+        )}
         {editing && (
-          <details open={!packages.length} style={{ marginTop: 12 }}>
+          <details open={!current.length} style={{ marginTop: 12 }}>
             <summary style={{ cursor: "pointer", fontWeight: 600, minHeight: 44, display: "flex", alignItems: "center" }}>
-              Build a package
+              Build a promotion
             </summary>
-            <ServicesPackageBuilder regular={regular} onCreated={async (name) => { await reload(); say(`${name} added. It's now bookable.`); }} onError={(m) => say(m)} />
+            <ServicesPromotionBuilder regular={regular} today={today}
+              onCreated={async (name) => { await reload(); say(`${name} added. It's bookable on its dates.`); }} onError={(m) => say(m)} />
           </details>
         )}
       </div>
@@ -128,7 +157,7 @@ export default function Services() {
       )}
 
       {edit && (
-        <EditServiceSheet s={edit} onClose={() => setEdit(null)}
+        <EditServiceSheet s={edit} today={today} onClose={() => setEdit(null)}
           onSaved={async (msg) => { setEdit(null); await reload(); say(msg); }} onError={say} />
       )}
       {toast}
@@ -136,9 +165,12 @@ export default function Services() {
   );
 }
 
-function EditServiceSheet({ s, onClose, onSaved, onError }: {
-  s: Service; onClose: () => void; onSaved: (msg: string) => Promise<void>; onError: (m: string) => void;
+function EditServiceSheet({ s, today, onClose, onSaved, onError }: {
+  s: Service; today: string; onClose: () => void; onSaved: (msg: string) => Promise<void>; onError: (m: string) => void;
 }) {
+  const promo = isPromo(s);
+  const [start, setStart] = useState<string | null>(s.promo_start ?? null);
+  const [end, setEnd] = useState<string | null>(s.promo_end ?? null);
   const [price, setPrice] = useState(String(Math.round(Number(s.price))));
   const [dur, setDur] = useState(String(s.duration_minutes));
   const [confirmRetire, setConfirmRetire] = useState(false);
@@ -148,9 +180,10 @@ function EditServiceSheet({ s, onClose, onSaved, onError }: {
     const p = Number(price), d = Number(dur);
     if (!Number.isFinite(p) || p < 0 || price.trim() === "") return onError("Enter a price of R0 or more.");
     if (!Number.isInteger(d) || d < 5) return onError("Duration must be at least 5 minutes.");
+    if (promo && start && end && end < start) return onError("The last day can't be before the first day.");
     setBusy(true);
     try {
-      await updateService(s.id, { price: Math.round(p), duration_minutes: d });
+      await updateService(s.id, { price: Math.round(p), duration_minutes: d, ...(promo ? { promo_start: start, promo_end: end } : {}) });
       await onSaved(`${s.name} updated.`);
     } catch (e) {
       onError(`Couldn't save: ${errText(e)}`);
@@ -175,7 +208,7 @@ function EditServiceSheet({ s, onClose, onSaved, onError }: {
   return (
     <Sheet title={s.name} onClose={onClose}>
       <div className="stack">
-        <p className="small muted" style={{ margin: 0 }}>{s.category}. Past bookings keep the price they were made at.</p>
+        <p className="small muted" style={{ margin: 0 }}>{promo ? "Promotion" : s.category}. Past bookings keep the price they were made at.</p>
         <div className="fields2">
           <label className="field">Price (R)
             <input type="number" inputMode="numeric" min={0} step={10} value={price} onChange={(e) => setPrice(e.target.value)} />
@@ -184,6 +217,17 @@ function EditServiceSheet({ s, onClose, onSaved, onError }: {
             <input type="number" inputMode="numeric" min={5} step={5} value={dur} onChange={(e) => setDur(e.target.value)} />
           </label>
         </div>
+        {promo && (
+          <>
+            <div className="field">Runs from
+              <DatePick value={start} onChange={setStart} today={today} placeholder="No start date" />
+            </div>
+            <div className="field">Until (last day)
+              <DatePick value={end} onChange={setEnd} today={today} placeholder="No end date" />
+            </div>
+            <p className="small muted" style={{ margin: "-4px 0 0" }}>Offered for appointments on these dates only. End it early by moving the last day to today.</p>
+          </>
+        )}
         <button onClick={save} disabled={busy}>Save</button>
         <hr style={{ border: 0, borderTop: "1px solid var(--line)", margin: "4px 0", width: "100%" }} />
         {!confirmRetire ? (
@@ -220,9 +264,9 @@ function AddServiceForm({ categories, onSaved, onError }: {
     const p = Number(price), d = Number(dur);
     if (!name.trim()) return setErr("Enter a service name.");
     if (!category) return setErr("Enter a category name.");
-    // "Packages" is reserved: a package is a services row under that category.
-    if (category.toLowerCase() === PACKAGE_CATEGORY.toLowerCase())
-      return setErr("“Packages” is reserved for package deals. Use the package builder above instead.");
+    // "Promotions" (and the old "Packages") are reserved: a promotion is a services row under that category.
+    if (isPromo({ category }) || ["promotions", "packages"].includes(category.toLowerCase()))
+      return setErr("“Promotions” is reserved. Use Build a promotion above instead.");
     if (!Number.isFinite(p) || p < 0 || price.trim() === "") return setErr("Enter a price of R0 or more.");
     if (!Number.isInteger(d) || d < 5) return setErr("Duration must be at least 5 minutes.");
     setErr(null);

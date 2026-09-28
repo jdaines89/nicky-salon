@@ -21,8 +21,6 @@ export function ClientForm({ editing, today, onClose, onSaved }: {
 }) {
   const [name, setName] = useState(editing?.name ?? "");
   const [phone, setPhone] = useState(editing?.phone ?? "");
-  const [shape, setShape] = useState(editing?.shape ?? "");
-  const [shade, setShade] = useState(editing?.shade ?? "");
   const bdayRaw = editing?.birthday && /^\d{2}-\d{2}$/.test(editing.birthday) ? editing.birthday : null;
   // A leap year, so 29 February survives the round trip.
   const [birthday, setBirthday] = useState(bdayRaw ? `2000-${bdayRaw}` : "");
@@ -50,7 +48,8 @@ export function ClientForm({ editing, today, onClose, onSaved }: {
     // unrelated edit must not silently re-date someone's history under her.
     const prior = count !== existingPrior.length ? estimatedPriorVisits(count, every * 7, today) : existingPrior;
     const fields = {
-      name: n, phone: phone.trim() || null, shape: shape.trim() || null, shade: shade.trim() || null,
+      // Shape and shade are no longer asked for; leaving them out keeps anything already saved.
+      name: n, phone: phone.trim() || null,
       birthday: bday, prior_visits: prior,
     };
     setErr("");
@@ -78,14 +77,6 @@ export function ClientForm({ editing, today, onClose, onSaved }: {
         <label className="field">Phone
           <input value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" inputMode="tel" placeholder="082 123 4567" />
         </label>
-        <div className="fields2">
-          <label className="field">Preferred shape
-            <input value={shape} onChange={(e) => setShape(e.target.value)} placeholder="e.g. Almond" />
-          </label>
-          <label className="field">Preferred shade
-            <input value={shade} onChange={(e) => setShade(e.target.value)} placeholder="e.g. Nude pink" />
-          </label>
-        </div>
         {/* Day and month only: the year isn't kept, so asking for one (and
             scrolling a date picker back decades to find it) was wasted effort. */}
         <div className="field" role="group" aria-label="Birthday">Birthday

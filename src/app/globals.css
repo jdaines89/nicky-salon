@@ -230,7 +230,7 @@ button.pill, .btn.pill { border-radius: 999px; }
 .grow { flex: 1; min-width: 0; }
 
 /* ---------------------------------------------------------------- forms */
-label.field { display: flex; flex-direction: column; gap: 6px; font-size: 14.5px; font-weight: 650; color: var(--ink-2); }
+label.field, div.field { display: flex; flex-direction: column; gap: 6px; font-size: 14.5px; font-weight: 650; color: var(--ink-2); }
 input, select, textarea {
   font: inherit; font-size: 16px; /* 16px stops iOS zooming on focus */
   background: var(--card); color: var(--ink);
@@ -371,6 +371,12 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .auth .mono-lg { width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center; margin-bottom: 18px;
   background: linear-gradient(145deg, var(--teal-2), var(--teal)); color: var(--mono-ink); font-family: var(--serif); font-style: italic; font-size: 36px; }
 .auth h1 { font-size: 30px; }
+.pw { position: relative; }
+.pw input { width: 100%; padding-right: 54px; }
+button.pw-eye { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 46px; min-height: 44px; padding: 0;
+  border-radius: 12px; background: none; color: var(--ink-soft); border: 0; }
+button.pw-eye:hover, button.pw-eye[aria-pressed="true"] { color: var(--teal-2); background: var(--teal-mist); }
+button.pw-eye:active { transform: translateY(-50%); }
 
 /* Page title with its main action beside it. */
 .page-head { display: flex; align-items: flex-end; gap: 12px; }

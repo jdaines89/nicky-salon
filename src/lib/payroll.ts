@@ -151,7 +151,9 @@ export function bookingRows(booking: BookingLike, clientName: string): PayrollRo
   for (const bs of booking.booking_services || []) {
     const price = Number(bs.price_at_time || 0);
     gross += price;
-    rows.push({ date: d, client: clientName, service: bs.service_name, amount: price, kind: "service", bookingId: bid });
+    const qty = Number(bs.quantity || 1);
+    const service = qty > 1 ? `${bs.service_name} x ${qty}` : bs.service_name;
+    rows.push({ date: d, client: clientName, service, amount: price, kind: "service", bookingId: bid });
   }
   const discount = Math.min(Number(booking.discount || 0), gross);
   if (discount > 0) {
@@ -225,7 +227,7 @@ export function serviceSummary(rows: PayrollRow[]): SummaryLine[] {
   return [...lines, ...all.filter((t) => t.service === DISCOUNT_LABEL)];
 }
 
-export type PaymentKey = "cash" | "card" | "transfer" | "unrecorded" | string;
+export type PaymentKey = "cash" | "card" | "transfer" | "voucher" | "unrecorded" | string;
 
 export interface PaymentSlot {
   method: PaymentKey;
@@ -253,7 +255,7 @@ export function paymentSplit<B extends BookingLike>(bookings: B[], netOf: (b: B)
     slot.count += 1;
     slot.total = pyRound(slot.total + netOf(b), 2);
   }
-  const order: Record<string, number> = { cash: 0, card: 1, transfer: 2, unrecorded: 3 };
+  const order: Record<string, number> = { cash: 0, card: 1, transfer: 2, voucher: 3, unrecorded: 4 };
   const rank = (m: string) => (Object.prototype.hasOwnProperty.call(order, m) ? order[m] : 9);
   return [...out.values()].sort((a, b) => rank(a.method) - rank(b.method));
 }
@@ -262,6 +264,7 @@ export const PAYMENT_TITLES: Readonly<Record<string, string>> = {
   cash: "Cash",
   card: "Card",
   transfer: "Transfer/EFT",
+  voucher: "Voucher",
   unrecorded: "Not recorded",
 };
 

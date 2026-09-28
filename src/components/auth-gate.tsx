@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { Eye, EyeOff } from "lucide-react";
 import { arrivedVia, configured, supabase } from "@/lib/supabase";
 
 /**
@@ -32,6 +33,23 @@ export function AuthGate({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+/** A password box with an eye to show what she's typed: one wrong letter on a phone keyboard is easy. */
+function PasswordInput({ value, onChange, placeholder, autoComplete }: {
+  value: string; onChange: (v: string) => void; placeholder: string; autoComplete: string;
+}) {
+  const [shown, setShown] = useState(false);
+  return (
+    <div className="pw">
+      <input type={shown ? "text" : "password"} required placeholder={placeholder} autoComplete={autoComplete}
+        autoCapitalize="none" autoCorrect="off" spellCheck={false} value={value} onChange={(e) => onChange(e.target.value)} />
+      <button type="button" className="pw-eye" onClick={() => setShown(!shown)}
+        aria-label={shown ? "Hide password" : "Show password"} aria-pressed={shown}>
+        {shown ? <EyeOff size={20} /> : <Eye size={20} />}
+      </button>
+    </div>
+  );
+}
+
 function SignIn() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -60,7 +78,7 @@ function SignIn() {
       <p className="sub">Sign in with the email your invite went to.</p>
       <form onSubmit={submit} className="stack">
         <input type="email" required placeholder="Email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <input type="password" required placeholder="Password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <PasswordInput placeholder="Password" autoComplete="current-password" value={password} onChange={setPassword} />
         <button type="submit" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
         <button type="button" className="linkish forgot" onClick={forgot}>Forgot your password?</button>
       </form>
@@ -87,7 +105,7 @@ function SetPassword({ email, reset, onDone }: { email: string; reset: boolean; 
       <h1>{reset ? "Choose a new password" : "Welcome, lovely"}</h1>
       <p className="sub">{reset ? `For ${email}.` : `Choose a password for ${email}. You'll use it to sign in from now on.`}</p>
       <form onSubmit={submit} className="stack">
-        <input type="password" required placeholder="New password (8+ characters)" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <PasswordInput placeholder="New password (8+ characters)" autoComplete="new-password" value={password} onChange={setPassword} />
         <button type="submit">Save and continue</button>
       </form>
       {msg && <p className="small" style={{ color: "var(--danger)", marginBottom: 0 }}>{msg}</p>}
