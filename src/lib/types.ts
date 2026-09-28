@@ -106,6 +106,8 @@ export interface Booking {
   late_fee_booking_id?: string | null; // the later visit the fee was added to
   /** When she marked the visit done (status stays 'confirmed'). Null = not marked. */
   completed_at?: string | null;
+  /** Done at the client's home rather than at the salon. */
+  house_call?: boolean | null;
   created_at: string | null;
 }
 
@@ -141,6 +143,7 @@ export interface BookingLike {
   discount?: number | null;
   tip?: number | null;
   payment_method?: PaymentMethod | string | null;
+  house_call?: boolean | null;
   booking_services?: ServiceLine[] | null;
 }
 

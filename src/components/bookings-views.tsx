@@ -58,7 +58,7 @@ function BookingRow({ b, byId, fv, onEdit, showDate }: {
       <span className="time">{showDate && <span className="small" style={{ display: "block", fontWeight: 600, color: "var(--ink-soft)" }}>{fmtDayMonShort(b.date)}</span>}{b.time.slice(0, 5)}</span>
       <div className="grow">
         <div className="title">{nameOf(b, byId)}</div>
-        <div className="meta">{bookingTitle(b)} · {rand(bookingNet(b))}{paymentShort(b) ? ` · ${paymentShort(b)}` : ""}{b.notes ? ` · ${b.notes}` : ""}</div>
+        <div className="meta">{b.house_call ? "House call · " : ""}{bookingTitle(b)} · {rand(bookingNet(b))}{paymentShort(b) ? ` · ${paymentShort(b)}` : ""}{b.notes ? ` · ${b.notes}` : ""}</div>
       </div>
       <span className={`badge ${look.badge}`}>{look.label}</span>
     </button>
@@ -293,7 +293,7 @@ export function DayView({ focus, today, bookings, clientById, fv, setFocus, onEd
                   }}>
                   <span className="n"><span className="nm">{nameOf(b, clientById)}</span>{look.label !== "Confirmed" && <em>{look.label}</em>}
                     <em className="amt">{rand(bookingNet(b))}{paymentShort(b) ? ` · ${paymentShort(b)}` : ""}</em></span>
-                  <span className="w">{b.time.slice(0, 5)}–{hhmm(toMinutes(b.time) + (b.duration_minutes || 30))} · {bookingTitle(b)}</span>
+                  <span className="w">{b.time.slice(0, 5)}–{hhmm(toMinutes(b.time) + (b.duration_minutes || 30))} · {b.house_call ? "House call · " : ""}{bookingTitle(b)}</span>
                   {b.notes && h >= 70 && <span className="w nt"><StickyNote size={11} /> {b.notes}</span>}
                 </button>
               );

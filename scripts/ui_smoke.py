@@ -51,6 +51,7 @@ bookings[-3]["payment_method"] = "voucher"; bookings[-3]["voucher_code"] = "GV-0
 bookings[-2]["booking_services"].append({"id": str(uuid.uuid4()), "booking_id": bookings[-2]["id"], "service_id": services[4]["id"], "service_name": services[4]["name"], "price_at_time": 75, "quantity": 5})
 bookings[-2]["payment_method"] = "card"
 bookings[-3]["completed_at"] = d(0) + "T08:05:00Z"
+bookings[-2]["house_call"] = True
 # Stand-in nail photos: soft polish colours on five almond nails, served as SVG.
 POLISH = ["#E8B4B8", "#B5838D", "#6D597A", "#F2CC8F", "#81B29A", "#E07A5F", "#3D405B", "#F4F1DE", "#CDB4DB", "#A3C4BC", "#9A031E", "#FFCAD4"]
 def nail_svg(c):
@@ -170,6 +171,9 @@ with sync_playwright() as p:
         if "x 5" not in page.inner_text(".sp-chosen").replace("×", "x") and "5 x" not in page.inner_text(".sp-chosen").replace("×", "x"):
             errs.append("quantity not shown")
         if page.locator("button.sp-cat-h", has_text="Winter Warmer").count(): errs.append("ended promotion offered")
+        page.locator("label.bk-latebox", has_text="House call").click(); page.wait_for_timeout(100)
+        page.locator("label.bk-latebox", has_text="House call").scroll_into_view_if_needed()
+        page.screenshot(path=os.path.join(SHOTS, f"{label}_sheet_2e_housecall.png"))
         page.locator("button.bs-toggle").click(); page.wait_for_timeout(150)
         page.locator(".bk-segfull button", has_text="Voucher").click(); page.wait_for_timeout(150)
         page.locator("input[placeholder^='e.g. GV']").fill("GV-0999")
@@ -182,6 +186,7 @@ with sync_playwright() as p:
         page.wait_for_timeout(950)
         page.screenshot(path=os.path.join(SHOTS, f"{label}_sheet_4_saved.png"))
         if page.locator(".sheet").count(): errs.append("booking sheet still open after Book")
+        if not any('"house_call":true' in (w[2] or "").replace(" ", "") for w in writes): errs.append("house call not saved")
         if errs: failures.append((label, "booking flow", errs))
         print(("FAIL " if errs else "ok   ") + label, "booking flow", errs[:3])
         page.close()
@@ -202,6 +207,29 @@ with sync_playwright() as p:
             if not any("completed_at" in (w[2] or "") for w in writes[n:]): errs.append("completing didn't save completed_at")
         if errs: failures.append((label, "booking photos", errs))
         print(("FAIL " if errs else "ok   ") + label, "booking photos", errs[:3])
+        page.close()
+        # For My Boss: one row per booking, and the Excel file downloads.
+        page = ctx.new_page(); errs = []
+        page.on("pageerror", lambda e: errs.append("pageerror: " + str(e)))
+        page.goto(f"http://127.0.0.1:{srv.server_address[1]}/reports/"); page.wait_for_timeout(1500)
+        page.locator("button", has_text="For My Boss").first.click(); page.wait_for_timeout(300)
+        if page.locator("table tbody tr").count():
+            with page.expect_download() as dl: page.locator("button", has_text="Excel").click()
+            if not dl.value.suggested_filename.endswith(".xlsx"): errs.append("no xlsx download")
+        page.screenshot(path=os.path.join(SHOTS, f"{label}_reports_boss.png"), full_page=True)
+        if errs: failures.append((label, "for my boss", errs))
+        print(("FAIL " if errs else "ok   ") + label, "for my boss", errs[:3])
+        page.close()
+        # Marketing: pick any client and message her.
+        page = ctx.new_page(); errs = []
+        page.on("pageerror", lambda e: errs.append("pageerror: " + str(e)))
+        page.goto(f"http://127.0.0.1:{srv.server_address[1]}/marketing/"); page.wait_for_timeout(1500)
+        page.locator("button", has_text="Pick a client").first.click(); page.wait_for_timeout(250)
+        page.fill("input[aria-label='Search clients']", next(c for c in clients if c.get("phone"))["name"][:4]); page.wait_for_timeout(200)
+        if not page.locator(f"a[href^='https://wa.me/']").count(): errs.append("no WhatsApp link for a picked client")
+        page.screenshot(path=os.path.join(SHOTS, f"{label}_marketing_pick.png"))
+        if errs: failures.append((label, "pick a client", errs))
+        print(("FAIL " if errs else "ok   ") + label, "pick a client", errs[:3])
         page.close()
         # Blocked time: the day view shows lunch; the sheet to block more.
         page = ctx.new_page(); errs = []

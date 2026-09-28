@@ -124,22 +124,25 @@ export function ReportsPayroll({ bookings, clients, today, onError }: {
             </button>
           </div>
           <p className="small muted">
-            The Excel file has a <b>Summary</b> tab too, and live totals: change a line and the total follows. Take the
-            CSV if your boss doesn&apos;t use Excel. For a PDF, open either one and print to PDF.
+            One row per booking, with its services together. The Excel totals are live: change a line and the total
+            follows. Take the CSV if your boss doesn&apos;t use Excel. For a PDF, open either one and print to PDF.
           </p>
 
           {/* Narrow on purpose: the year is noise inside one month, and on a phone the Amount column must stay on screen. */}
           <div className="card tight" style={{ maxHeight: 360, overflowY: "auto" }}>
             <table>
               <thead>
-                <tr><th>Date</th><th>Client</th><th>Service</th><th className="num">Amount</th></tr>
+                <tr><th>Date</th><th>Client</th><th>Services</th><th className="num">Amount</th></tr>
               </thead>
               <tbody>
                 {rows.map((r, i) => (
                   <tr key={i}>
                     <td style={{ whiteSpace: "nowrap" }}>{fmtDayMonShort(r.date)}</td>
                     <td style={{ wordBreak: "break-word" }}>{r.client}</td>
-                    <td style={{ wordBreak: "break-word", color: r.kind === "discount" ? "var(--danger)" : undefined }}>{r.service}</td>
+                    <td style={{ wordBreak: "break-word" }}>
+                      {r.services}
+                      {r.discount > 0 && <span className="small" style={{ display: "block", color: "var(--danger)" }}>less {rand2(r.discount)} discount</span>}
+                    </td>
                     <td className="num">{r.amount.toFixed(2)}</td>
                   </tr>
                 ))}
@@ -147,8 +150,8 @@ export function ReportsPayroll({ bookings, clients, today, onError }: {
             </table>
           </div>
           <p className="small muted">
-            A loyalty discount shows as its own “Discount” line rather than being smeared across that visit&apos;s
-            services, so the total here is exactly the money the salon took, the same number Reports shows everywhere else.
+            Each amount is what the visit came to after any discount, so the total here is exactly the money the salon
+            took, the same number Reports shows everywhere else.
           </p>
         </>
       )}

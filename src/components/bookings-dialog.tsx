@@ -98,6 +98,7 @@ export function BookingSheet({ booking, draft, onClose, onDone }: {
   const [voucherCode, setVoucherCode] = useState(booking?.voucher_code ?? "");
   const [voucherValue, setVoucherValue] = useState(booking?.voucher_value != null ? String(Math.round(Number(booking.voucher_value))) : "");
   const [lateCancel, setLateCancel] = useState(Boolean(booking?.late_cancel));
+  const [houseCall, setHouseCall] = useState(Boolean(booking?.house_call));
   const [waived, setWaived] = useState<string[]>([]);
   const [notes, setNotes] = useState(booking?.notes ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -205,6 +206,7 @@ export function BookingSheet({ booking, draft, onClose, onDone }: {
       discount: disc, tip: tipN, payment_method: pay === "none" ? null : pay,
       voucher_code: pay === "voucher" ? voucherCode.trim() || null : null,
       voucher_value: pay === "voucher" ? vValue : null,
+      house_call: houseCall,
       ...late,
       ...(complete ? { status: "confirmed" as const, completed_at: new Date().toISOString() } : {}),
     };
@@ -349,6 +351,13 @@ export function BookingSheet({ booking, draft, onClose, onDone }: {
           </div>
           <TimeSlots date={date} time={time} onChange={setTime} duration={duration || 30} bookings={busyTimes}
             excludeId={booking?.id} today={today} allowPast={isEdit} />
+          <label className="bk-latebox" style={{ marginTop: 12 }}>
+            <input type="checkbox" checked={houseCall} onChange={(e) => setHouseCall(e.target.checked)} />
+            <span className="grow">
+              <b>House call</b>
+              <span className="small muted" style={{ display: "block" }}>At the client&apos;s home. Add travel time to the length above.</span>
+            </span>
+          </label>
         </div>
 
         {clashBox}

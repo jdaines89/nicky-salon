@@ -56,7 +56,9 @@ screenshots for the pages you touched.
   `promo_end`, offered only for appointments inside the window; `time_locks`
   (blocked time), fed to the free-time maths through `busy` in `useSalon()`
   and never to anything that counts money. `bookings.completed_at` is when she
-  tapped Complete visit (status stays confirmed). Shape and shade are no longer asked
+  tapped Complete visit (status stays confirmed). `bookings.house_call`
+  (`..._house_call.sql`) marks a visit at the client's home. The pay export is
+  one row per booking (services together, discount column), with no summary sheet. Shape and shade are no longer asked
   for; the columns and old values stay.
 - **Photos:** private `client-photos` bucket, signed URLs only, every image
   re-encoded in the browser (EXIF/GPS stripped) before upload.

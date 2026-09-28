@@ -2,10 +2,9 @@
 import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
 import {
-  bookingRows,
+  bookingRow,
   csvSafe,
   defaultMonth,
-  DISCOUNT_LABEL,
   doneBookings,
   exportFilename,
   monthKey,
@@ -17,7 +16,6 @@ import {
   pendingBookings,
   rowsToCsv,
   rowsToXlsx,
-  serviceSummary,
   totals,
   upcomingBookings,
 } from "@/lib/payroll";
@@ -136,23 +134,29 @@ describe("which bookings count", () => {
 // ---------------- rows ----------------
 
 describe("rows", () => {
-  it("one row per service with the snapshotted price", () => {
+  it("one row per booking, its services together", () => {
     const rows = rowsFor([bk("b1", "c1", { services: [svc("Gel Overlay", 300), svc("Brow Wax", 90)] })]);
-    expect(rows.map((r) => [r.client, r.service, r.amount])).toEqual([
-      ["Thandi", "Gel Overlay", 300.0],
-      ["Thandi", "Brow Wax", 90.0],
-    ]);
-    expect(rows.every((r) => r.date === "2026-08-05" && r.kind === "service")).toBe(true);
+    expect(rows).toEqual([{
+      date: "2026-08-05", client: "Thandi", services: "Gel Overlay, Brow Wax",
+      serviceCount: 2, discount: 0, amount: 390, bookingId: "b1",
+    }]);
   });
 
-  it("discount is its own negative line, not smeared across services", () => {
+  it("a quantity reads as one service line (Nail Art x 3)", () => {
+    const rows = rowsFor([bk("b1", "c1", { services: [svc("Gel Overlay", 300), { ...svc("Nail Art", 60), quantity: 3 }] })]);
+    expect(rows[0].services).toBe("Gel Overlay, Nail Art x 3");
+    expect(rows[0].amount).toBe(360);
+    expect(totals(rows).services).toBe(2);
+  });
+
+  it("a house call says so", () => {
+    const b = { ...bk("b1"), house_call: true };
+    expect(rowsFor([b])[0].services).toBe("Gel Overlay (house call)");
+  });
+
+  it("the discount has its own column and the amount is after it", () => {
     const rows = rowsFor([bk("b1", "c1", { discount: 78, services: [svc("Gel Overlay", 300), svc("Brow Wax", 90)] })]);
-    expect(rows.map((r) => [r.service, r.amount])).toEqual([
-      ["Gel Overlay", 300.0],
-      ["Brow Wax", 90.0],
-      [DISCOUNT_LABEL, -78.0],
-    ]);
-    expect(rows[rows.length - 1].kind).toBe("discount");
+    expect([rows[0].discount, rows[0].amount]).toEqual([78, 312]);
   });
 
   it("row total is exactly booking_net, the same number reports shows", () => {
@@ -164,19 +168,20 @@ describe("rows", () => {
     const net = pySum(bookings.map(bookingNet));
     expect(totals(rows).total).toBe(net);
     expect(net).toBe(580);
+    for (const b of bookings) expect(rows.find((r) => r.bookingId === b.id)!.amount).toBe(bookingNet(b));
   });
 
   it("a discount bigger than the visit cannot push the total negative", () => {
     // bookingNet() clamps at zero; the export has to clamp the same way.
     const b = bk("b1", "c1", { discount: 500, services: [svc("Brow Wax", 90)] });
     const rows = rowsFor([b]);
-    expect(rows.map((r) => r.amount)).toEqual([90.0, -90.0]);
+    expect([rows[0].discount, rows[0].amount]).toEqual([90, 0]);
     expect(totals(rows).total).toBe(bookingNet(b));
     expect(bookingNet(b)).toBe(0);
   });
 
   it("a booking with no services contributes nothing even with a discount", () => {
-    expect(bookingRows(bk("b1", "c1", { discount: 50, services: [] }), "Thandi")).toEqual([]);
+    expect(bookingRow(bk("b1", "c1", { discount: 50, services: [] }), "Thandi")).toBeNull();
   });
 
   it("tips never reach the list", () => {
@@ -200,66 +205,41 @@ describe("rows", () => {
   });
 });
 
-// ---------------- summary ----------------
-
-describe("summary", () => {
-  it("ranks by earnings and keeps discounts last", () => {
-    const bookings = [
-      bk("b1", "c1", { discount: 60, services: [svc("Gel Overlay", 300)] }),
-      bk("b2", "c2", { date: "2026-08-09", services: [svc("Brow Wax", 90), svc("Gel Overlay", 300)] }),
-    ];
-    expect(serviceSummary(rowsFor(bookings))).toEqual([
-      { service: "Gel Overlay", count: 2, total: 600.0 },
-      { service: "Brow Wax", count: 1, total: 90.0 },
-      { service: DISCOUNT_LABEL, count: 1, total: -60.0 },
-    ]);
-  });
-
-  it("adds up to the same grand total as the detail", () => {
-    const bookings = [
-      bk("b1", "c1", { discount: 60, services: [svc("Gel Overlay", 300)] }),
-      bk("b2", "c2", { date: "2026-08-09", services: [svc("Pedi", 250)] }),
-    ];
-    const rows = rowsFor(bookings);
-    expect(pySum(serviceSummary(rows).map((s) => s.total))).toBe(totals(rows).total);
-  });
-
-  it("an empty month is empty", () => {
-    expect(serviceSummary([])).toEqual([]);
-  });
-});
-
 // ---------------- files ----------------
 
 describe("files", () => {
   it("CSV is a plain table with a total row", () => {
-    const rows = rowsFor([bk("b1", "c1", { discount: 60, services: [svc("Gel Overlay", 300)] })]);
+    const rows = rowsFor([
+      bk("b1", "c1", { discount: 60, services: [svc("Gel Overlay", 300), svc("Brow Wax", 90)] }),
+      bk("b2", "c2", { date: "2026-08-09", services: [svc("Pedi", 250)] }),
+    ]);
     const ls = lines(rowsToCsv(rows));
-    expect(ls[0]).toBe("Date,Client,Service,Amount (R)");
-    expect(ls[1]).toBe("2026-08-05,Thandi,Gel Overlay,300.00");
-    expect(ls[2]).toBe("2026-08-05,Thandi,Discount,-60.00");
-    expect(ls[3]).toBe(",,TOTAL,240.00");
+    expect(ls[0]).toBe("Date,Client,Services,Discount (R),Amount (R)");
+    expect(ls[1]).toBe('2026-08-05,Thandi,"Gel Overlay, Brow Wax",60.00,330.00');
+    expect(ls[2]).toBe("2026-08-09,Lerato,Pedi,,250.00");
+    expect(ls[3]).toBe(",,TOTAL,60.00,580.00");
   });
 
   it("CSV of an empty month still has a header and a zero total", () => {
-    expect(lines(rowsToCsv([]))).toEqual(["Date,Client,Service,Amount (R)", ",,TOTAL,0.00"]);
+    expect(lines(rowsToCsv([]))).toEqual(["Date,Client,Services,Discount (R),Amount (R)", ",,TOTAL,0.00,0.00"]);
   });
 
-  it("xlsx has both sheets and a live total formula", async () => {
-    const rows = rowsFor([bk("b1", "c1", { discount: 60, services: [svc("Gel Overlay", 300)] })]);
-    const { read } = await unzip(await rowsToXlsx(rows, "2026-08", "2026-09-01"));
+  it("xlsx is one sheet with live total formulas", async () => {
+    const rows = rowsFor([
+      bk("b1", "c1", { discount: 60, services: [svc("Gel Overlay", 300)] }),
+      bk("b2", "c2", { date: "2026-08-09", services: [svc("Pedi", 250)] }),
+    ]);
+    const { read, z } = await unzip(await rowsToXlsx(rows, "2026-08", "2026-09-01"));
     const workbook = await read("xl/workbook.xml");
     expect(workbook).toContain('name="Services"');
-    expect(workbook).toContain('name="Summary"');
+    expect(workbook).not.toContain('name="Summary"');
+    expect(z.files["xl/worksheets/sheet2.xml"]).toBeUndefined();
     // Live formulas, not baked-in numbers: she can delete a line she was told
     // to leave off and the total she is paid on follows her edit.
-    expect(await read("xl/worksheets/sheet1.xml")).toContain("SUM(D5:D6)");
+    const sheet = await read("xl/worksheets/sheet1.xml");
+    expect(sheet).toContain("SUM(D5:D6)");
+    expect(sheet).toContain("SUM(E5:E6)");
     expect(await read("xl/sharedStrings.xml")).toContain("August 2026");
-    // "Times done" totals the service lines only — a discount is not work she
-    // performed, so its row is outside the count's SUM range.
-    const summaryXml = await read("xl/worksheets/sheet2.xml");
-    expect(summaryXml).toContain("SUM(B5:B5)");
-    expect(summaryXml).toContain("SUM(C5:C6)");
   });
 
   it("xlsx of an empty month is still a valid workbook", async () => {
@@ -294,17 +274,11 @@ describe("formula injection", () => {
     }
   });
 
-  it("the amount column keeps its minus sign", () => {
-    // "-" is a formula leader, but discount rows legitimately start with one.
-    const rows = rowsFor([bk("b1", "c1", { discount: 60, services: [svc("Gel Overlay", 300)] })]);
-    expect(lines(rowsToCsv(rows))[2].endsWith(",-60.00")).toBe(true);
-  });
-
   it("xlsx stores a formula-shaped name as inert text", async () => {
     const rows = rowsFor([bk("b1")], [cl("c1", "=1+1")]);
     const { read } = await unzip(await rowsToXlsx(rows, "2026-08"));
-    // Exactly the one intended TOTAL sum on this sheet is a formula; the name is not.
-    expect((await read("xl/worksheets/sheet1.xml")).split("<f>").length - 1).toBe(1);
+    // Exactly the two intended TOTAL sums on this sheet are formulas; the name is not.
+    expect((await read("xl/worksheets/sheet1.xml")).split("<f>").length - 1).toBe(2);
     expect(await read("xl/sharedStrings.xml")).toContain("1+1");
   });
 
