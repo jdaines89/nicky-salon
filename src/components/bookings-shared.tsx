@@ -408,7 +408,7 @@ button.bk-blk em { font-style: normal; }
 /* Day timeline. */
 .bk-daysum { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 12px 0 16px; }
 .bk-daysum > div { background: var(--paper); border-radius: 14px; padding: 8px 10px; display: flex; flex-direction: column; }
-.bk-daysum b { font-family: var(--serif); font-weight: 450; font-size: 20px; line-height: 1.2; font-variant-numeric: lining-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bk-daysum b { font-family: var(--nums); font-weight: 700; font-size: 19px; line-height: 1.2; font-variant-numeric: lining-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bk-daysum span { font-size: 13.5px; color: var(--ink-soft); font-weight: 600; }
 .bk-tl { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 6px; margin-bottom: 12px; }
 .bk-tl .lbls { position: relative; }
@@ -461,7 +461,7 @@ button.bs-go.clash { background: var(--danger); box-shadow: none; }
 .bk-actions > button.icon { width: 56px; min-height: 56px; border-radius: 18px; }
 .bs-sum { display: flex; align-items: center; gap: 12px; }
 .bs-when { font-weight: 700; font-size: 16px; }
-.bs-total { font-family: var(--serif); font-size: 26px; font-weight: 450; letter-spacing: -0.02em; text-align: right; line-height: 1.1; font-variant-numeric: lining-nums; }
+.bs-total { font-family: var(--nums); font-size: 24px; font-weight: 700; letter-spacing: -0.01em; text-align: right; line-height: 1.1; font-variant-numeric: lining-nums; }
 .bs-total s { display: block; font-family: var(--sans); font-size: 14px; color: var(--ink-soft); letter-spacing: 0; }
 .bs-dur { margin-top: 14px; padding: 10px; border-radius: 16px; background: var(--paper); }
 button.bs-toggle { width: 100%; background: none; color: var(--ink-2); border: 0; padding: 0; min-height: 40px; justify-content: flex-start; gap: 10px; font-weight: 400; }

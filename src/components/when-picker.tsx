@@ -313,7 +313,7 @@ button.wp-day { flex: none; scroll-snap-align: center; width: 58px; min-height: 
   background: var(--paper); color: var(--ink); border: 1.5px solid transparent; }
 button.wp-day:hover { background: var(--teal-mist); }
 button.wp-day .dow { font-size: 13px; font-weight: 700; color: var(--ink-soft); letter-spacing: 0.02em; }
-button.wp-day .dn { font-family: var(--serif); font-size: 23px; font-weight: 450; line-height: 1.05; font-variant-numeric: lining-nums; }
+button.wp-day .dn { font-family: var(--nums); font-size: 21px; font-weight: 700; line-height: 1.05; font-variant-numeric: lining-nums; }
 button.wp-day .dots { display: flex; gap: 3px; height: 6px; align-items: center; }
 button.wp-day .dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--teal-3); }
 button.wp-day .dots i.free { background: transparent; border: 1px solid var(--ink-faint); }
@@ -373,7 +373,7 @@ button.dp-btn:hover { background: var(--teal-mist); }
 .dp-cal { margin-top: 8px; padding: 10px; border-radius: 16px; background: var(--paper); }
 .dur { display: flex; align-items: center; gap: 10px; }
 .dur-v { flex: 1; text-align: center; display: flex; flex-direction: column; line-height: 1.2; }
-.dur-v b { font-family: var(--serif); font-size: 21px; font-weight: 450; }
+.dur-v b { font-family: var(--nums); font-size: 20px; font-weight: 700; }
 .dur-v span, .dur-v button { font-size: 13.5px; color: var(--ink-soft); }
 .dur-v button.linkish { color: var(--teal-2); font-size: 14px; align-self: center; }
 `;

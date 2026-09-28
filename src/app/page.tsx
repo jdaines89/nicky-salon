@@ -305,7 +305,7 @@ const TODAY_CSS = `
 .hero-tag { font-size: 13px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--hero-gold); }
 .hero-in { margin-left: auto; font-size: 14.5px; font-weight: 650; background: rgba(255,255,255,0.12); padding: 3px 10px; border-radius: 999px; }
 .hero-main { display: flex; align-items: center; gap: 14px; }
-.hero-time { font-family: var(--serif); font-size: 38px; font-weight: 400; letter-spacing: -0.03em; font-variant-numeric: lining-nums; }
+.hero-time { font-family: var(--nums); font-size: 34px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: lining-nums; }
 .hero-name { font-family: var(--serif); font-size: 22px; font-weight: 450; line-height: 1.15; }
 .hero-svc { font-size: 15.5px; color: rgba(255,255,255,0.78); }
 .hero-note { display: flex; align-items: center; gap: 6px; font-size: 14.5px; color: var(--hero-gold); background: rgba(255,255,255,0.08); border-radius: 12px; padding: 6px 10px; }
@@ -315,7 +315,7 @@ const TODAY_CSS = `
 .hero-progress i.now { background: var(--hero-gold); }
 .wrap-money { display: flex; flex-direction: column; align-items: flex-start; gap: 0; background: none; border: 0; padding: 4px 0 2px; min-height: 0; color: inherit; text-align: left; }
 .wrap-money:hover { background: none; }
-.wrap-big { font-family: var(--serif); font-size: 44px; font-weight: 400; letter-spacing: -0.03em; line-height: 1.05; filter: blur(9px); opacity: 0.85; transition: filter .35s var(--ease); font-variant-numeric: lining-nums; }
+.wrap-big { font-family: var(--nums); font-size: 40px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.05; filter: blur(9px); opacity: 0.85; transition: filter .35s var(--ease); font-variant-numeric: lining-nums; }
 .wrap-money.on .wrap-big { filter: none; opacity: 1; }
 .wrap-sub { font-size: 14.5px; font-weight: 600; color: rgba(255,255,255,0.75); }
 .hero.quiet { background: linear-gradient(145deg, var(--card), var(--gold-soft)); color: var(--ink); box-shadow: var(--shadow-1); }
@@ -324,12 +324,12 @@ const TODAY_CSS = `
 .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
 .stat { background: var(--card); border-radius: 18px; padding: 12px 6px 10px; text-align: center; text-decoration: none; color: var(--ink); box-shadow: var(--shadow-1);
   display: flex; flex-direction: column; align-items: center; gap: 0; min-width: 0; min-height: 0; border: 0; font-weight: 400; }
-.stat b { font-family: var(--serif); font-size: 26px; font-weight: 450; line-height: 1.15; min-height: 30px; display: flex; align-items: center; font-variant-numeric: lining-nums; }
+.stat b { font-family: var(--nums); font-size: 24px; font-weight: 700; line-height: 1.15; min-height: 30px; display: flex; align-items: center; font-variant-numeric: lining-nums; }
 .stat span { font-size: 13px; color: var(--ink-soft); font-weight: 600; line-height: 1.25; }
 button.stat:hover { background: var(--card); }
 .money-toggle b svg { color: var(--gold-2); }
 .money-card { animation: pop .2s var(--ease) both; }
-.big-money { font-family: var(--serif); font-size: 34px; font-weight: 420; letter-spacing: -0.02em; line-height: 1.15; }
+.big-money { font-family: var(--nums); font-size: 32px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.15; }
 .up { color: var(--ok); } .down { color: var(--danger); }
 .up svg, .down svg { vertical-align: -2px; }
 
@@ -355,7 +355,7 @@ button.ok:hover { background: color-mix(in srgb, var(--ok) 88%, black); }
 .tl .meta { font-size: 14.5px; color: var(--ink-soft); }
 .tl-note { display: flex; align-items: center; gap: 4px; font-style: italic; }
 
-.avatar.bday { background: var(--rose-soft); color: color-mix(in srgb, var(--rose) 60%, var(--ink)); font-family: var(--serif); }
+.avatar.bday { background: var(--rose-soft); color: color-mix(in srgb, var(--rose) 60%, var(--ink)); font-family: var(--nums); font-weight: 700; }
 .recent { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .recent-c { display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: var(--ink); padding: 6px 2px; border-radius: 16px; min-width: 0; }
 .recent-c:hover { background: var(--teal-mist); }
