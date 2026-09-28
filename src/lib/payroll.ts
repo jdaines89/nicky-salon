@@ -24,7 +24,9 @@
 import { cmpTuple, formatDate, monthName, parseDate, pyFixed, pyRound, pySum, toDate, todaySa } from "./salon";
 import type { BookingLike, ClientLike, ISODate } from "./types";
 
-export const COLUMNS = ["Date", "Client", "Services", "Discount (R)", "Amount (R)"] as const;
+export const COLUMNS = ["Date", "Client", "Services", "House call", "Payment", "Discount (R)", "Amount (R)"] as const;
+/** Where the money columns start (0-based): everything before is text. */
+const MONEY_COL = 5;
 
 /**
  * Characters that make a spreadsheet treat a cell as a formula. A client may
@@ -134,6 +136,9 @@ export interface PayrollRow {
   client: string;
   /** Every service of the visit on one line: "Gel Overlay, Nail Art x 3". */
   services: string;
+  houseCall: boolean;
+  /** "Cash", "Card", "Voucher GV-0412", "Not recorded". */
+  payment: string;
   /** How many service lines the visit had (a quantity line counts once). */
   serviceCount: number;
   /** The discount taken off this visit, as a positive number (0 when none). */
@@ -161,11 +166,16 @@ export function bookingRow(booking: BookingLike, clientName: string): PayrollRow
   }
   gross = pyRound(gross, 2);
   const discount = pyRound(Math.min(Math.max(Number(booking.discount || 0), 0), gross), 2);
-  const services = names.join(", ") + (booking.house_call ? " (house call)" : "");
+  const services = names.join(", ");
+  const method = booking.payment_method || "unrecorded";
+  const title = PAYMENT_TITLES[method] ?? String(method);
+  const payment = method === "voucher" && booking.voucher_code ? `${title} ${booking.voucher_code}` : title;
   return {
     date: toDate(booking.date),
     client: clientName,
     services,
+    houseCall: Boolean(booking.house_call),
+    payment,
     serviceCount: lines.length,
     discount,
     amount: pyRound(gross - discount, 2),
@@ -272,7 +282,7 @@ export function csvSafe(value: unknown): string {
 
 function cells(rows: PayrollRow[]): string[][] {
   return rows.map((r) => [
-    String(r.date), csvSafe(r.client), csvSafe(r.services), r.discount ? pyFixed(r.discount, 2) : "", pyFixed(r.amount, 2),
+    String(r.date), csvSafe(r.client), csvSafe(r.services), r.houseCall ? "Yes" : "", csvSafe(r.payment), r.discount ? pyFixed(r.discount, 2) : "", pyFixed(r.amount, 2),
   ]);
 }
 
@@ -296,7 +306,7 @@ export function rowsToCsv(rows: PayrollRow[]): string {
   let out = csvRow([...COLUMNS]);
   for (const c of cells(rows)) out += csvRow(c);
   const t = totals(rows);
-  out += csvRow(["", "", "TOTAL", pyFixed(t.discount, 2), pyFixed(t.total, 2)]);
+  out += csvRow(["", "", "", "", "TOTAL", pyFixed(t.discount, 2), pyFixed(t.total, 2)]);
   return out;
 }
 
@@ -361,7 +371,7 @@ export async function rowsToXlsx(
 
   // ---- Services ----
   const ws = wb.addWorksheet("Services");
-  [13, 22, 44, 13, 14].forEach((w, i) => (ws.getColumn(i + 1).width = w));
+  [13, 22, 40, 11, 16, 13, 14].forEach((w, i) => (ws.getColumn(i + 1).width = w));
   put(ws, 0, 0, `${title} — services for ${label}`, fTitle);
   put(
     ws, 1, 0,
@@ -370,27 +380,29 @@ export async function rowsToXlsx(
     fSub,
   );
   const headRow = 3;
-  COLUMNS.forEach((name, col) => put(ws, headRow, col, name, col >= 3 ? fHeadR : fHead));
+  COLUMNS.forEach((name, col) => put(ws, headRow, col, name, col >= MONEY_COL ? fHeadR : fHead));
   rows.forEach((r, i) => {
     const row = headRow + 1 + i;
     put(ws, row, 0, parseDate(r.date), fDate); // UTC midnight -> exact Excel date
     put(ws, row, 1, r.client);
     put(ws, row, 2, r.services, fWrap);
-    put(ws, row, 3, r.discount ? pyRound(r.discount, 2) : null, fMoney);
-    put(ws, row, 4, pyRound(r.amount, 2), fMoney);
+    put(ws, row, 3, r.houseCall ? "Yes" : null);
+    put(ws, row, 4, r.payment);
+    put(ws, row, 5, r.discount ? pyRound(r.discount, 2) : null, fMoney);
+    put(ws, row, 6, pyRound(r.amount, 2), fMoney);
   });
   const totalRow = headRow + 1 + rows.length;
-  for (let col = 0; col < 3; col++) put(ws, totalRow, col, null, fTotLbl);
-  put(ws, totalRow, 2, "TOTAL", fTotLbl);
+  for (let col = 0; col < MONEY_COL; col++) put(ws, totalRow, col, null, fTotLbl);
+  put(ws, totalRow, MONEY_COL - 1, "TOTAL", fTotLbl);
   if (rows.length) {
-    put(ws, totalRow, 3, { formula: `SUM(D${headRow + 2}:D${totalRow})`, result: t.discount }, fTotNum);
-    put(ws, totalRow, 4, { formula: `SUM(E${headRow + 2}:E${totalRow})`, result: t.total }, fTotNum);
+    put(ws, totalRow, 5, { formula: `SUM(F${headRow + 2}:F${totalRow})`, result: t.discount }, fTotNum);
+    put(ws, totalRow, 6, { formula: `SUM(G${headRow + 2}:G${totalRow})`, result: t.total }, fTotNum);
   } else {
-    put(ws, totalRow, 3, 0, fTotNum);
-    put(ws, totalRow, 4, 0, fTotNum);
+    put(ws, totalRow, 5, 0, fTotNum);
+    put(ws, totalRow, 6, 0, fTotNum);
   }
   ws.views = [{ state: "frozen", xSplit: 0, ySplit: headRow + 1 }];
-  if (rows.length) ws.autoFilter = `${addr(headRow, 0)}:${addr(totalRow - 1, 4)}`;
+  if (rows.length) ws.autoFilter = `${addr(headRow, 0)}:${addr(totalRow - 1, 6)}`;
 
   const buf = await wb.xlsx.writeBuffer();
   return new Uint8Array(buf as ArrayBuffer);

@@ -77,16 +77,16 @@ export function ReportsPayroll({ bookings, clients, today, onError }: {
 
       {stillPending.length > 0 && (
         <div className="notice warn">
-          <AlertTriangle size={16} style={{ verticalAlign: -3 }} /> <b>{stillPending.length} appointment{stillPending.length === 1 ? "" : "s"} in {label} {stillPending.length === 1 ? "is" : "are"} still
+          <AlertTriangle size={16} style={{ verticalAlign: -3 }} /><span><b>{stillPending.length} appointment{stillPending.length === 1 ? "" : "s"} in {label} {stillPending.length === 1 ? "is" : "are"} still
           marked pending</b>, worth {rand(stillPending.reduce((s, b) => s + bookingNet(b), 0))}, and left out of this list.
           Say whether each one happened first, or you&apos;ll hand in a month that&apos;s short.{" "}
-          <Link href="/">Sort them out on Today</Link>
+          <Link href="/">Sort them out on Today</Link></span>
         </div>
       )}
       {later.length > 0 && (
         <div className="notice">
-          <CalendarClock size={16} style={{ verticalAlign: -3 }} /> {later.length} confirmed booking{later.length === 1 ? "" : "s"} later in {label} {later.length === 1 ? "is" : "are"} not
-          counted. That work hasn&apos;t happened yet. Export again once the month is over.
+          <CalendarClock size={16} style={{ verticalAlign: -3 }} /><span>{later.length} confirmed booking{later.length === 1 ? "" : "s"} later in {label} {later.length === 1 ? "is" : "are"} not
+          counted. That work hasn&apos;t happened yet. Export again once the month is over.</span>
         </div>
       )}
 
@@ -141,6 +141,7 @@ export function ReportsPayroll({ bookings, clients, today, onError }: {
                     <td style={{ wordBreak: "break-word" }}>{r.client}</td>
                     <td style={{ wordBreak: "break-word" }}>
                       {r.services}
+                      <span className="small muted" style={{ display: "block" }}>{r.payment}{r.houseCall ? " · House call" : ""}</span>
                       {r.discount > 0 && <span className="small" style={{ display: "block", color: "var(--danger)" }}>less {rand2(r.discount)} discount</span>}
                     </td>
                     <td className="num">{r.amount.toFixed(2)}</td>

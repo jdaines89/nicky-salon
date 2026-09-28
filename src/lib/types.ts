@@ -143,6 +143,7 @@ export interface BookingLike {
   discount?: number | null;
   tip?: number | null;
   payment_method?: PaymentMethod | string | null;
+  voucher_code?: string | null;
   house_call?: boolean | null;
   booking_services?: ServiceLine[] | null;
 }
