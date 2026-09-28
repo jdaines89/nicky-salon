@@ -9,11 +9,13 @@
  * appointments is where money goes missing — so the app builds the list.
  *
  * Three rules keep this list agreeing with the rest of the app:
- *   - It counts the money every other figure counts: a row per service at its
- *     snapshotted price_at_time, then the booking's discount as its own negative
- *     line, so the column sums to exactly sum(bookingNet(...)). The discount is
- *     never apportioned across services — that would invent a number. Tips
- *     never appear.
+ *   - It counts the money every other figure counts: a row per visit, its
+ *     services listed together, its discount in its own column and its amount
+ *     exactly bookingNet(), so the column sums to sum(bookingNet(...)). The
+ *     discount is never apportioned across services — that would invent a
+ *     number. Tips never appear. (Nicky asked for one row per booking and no
+ *     per-service summary on 2026-09-28: "Nail art x 3" and "x 4" are the same
+ *     service to her, so a roll-up by line split them.)
  *   - Confirmed work only, and only up to today (<=). Past-pending and upcoming
  *     bookings are counted and surfaced, never silently dropped.
  *   - It is a spreadsheet, not a report: she can delete or reword a line and the
@@ -22,8 +24,7 @@
 import { cmpTuple, formatDate, monthName, parseDate, pyFixed, pyRound, pySum, toDate, todaySa } from "./salon";
 import type { BookingLike, ClientLike, ISODate } from "./types";
 
-export const DISCOUNT_LABEL = "Discount";
-export const COLUMNS = ["Date", "Client", "Service", "Amount (R)"] as const;
+export const COLUMNS = ["Date", "Client", "Services", "Discount (R)", "Amount (R)"] as const;
 
 /**
  * Characters that make a spreadsheet treat a cell as a formula. A client may
@@ -131,38 +132,48 @@ export function upcomingBookings<B extends BookingLike>(bookings: B[], start: IS
 export interface PayrollRow {
   date: ISODate;
   client: string;
-  service: string;
+  /** Every service of the visit on one line: "Gel Overlay, Nail Art x 3". */
+  services: string;
+  /** How many service lines the visit had (a quantity line counts once). */
+  serviceCount: number;
+  /** The discount taken off this visit, as a positive number (0 when none). */
+  discount: number;
+  /** What the visit earned: services minus discount, exactly bookingNet(). */
   amount: number;
-  kind: "service" | "discount";
   bookingId: string | null;
 }
 
 /**
- * One booking → its service lines, then its discount line if there was one.
- * The discount is clamped to the visit's gross so rows can never sum below
- * zero — bookingNet() clamps the same way, and the whole point is that this
- * total matches every other revenue figure in the app.
+ * One booking → one row, the way Nicky thinks of her month: a client, what
+ * she had done, what it came to. The discount is clamped to the visit's gross
+ * so a row can never go below zero — bookingNet() clamps the same way, and the
+ * whole point is that the total matches every other revenue figure in the app.
  */
-export function bookingRows(booking: BookingLike, clientName: string): PayrollRow[] {
-  const d = toDate(booking.date);
-  const bid = booking.id ?? null;
-  const rows: PayrollRow[] = [];
+export function bookingRow(booking: BookingLike, clientName: string): PayrollRow | null {
+  const lines = booking.booking_services || [];
+  if (!lines.length) return null;
   let gross = 0;
-  for (const bs of booking.booking_services || []) {
-    const price = Number(bs.price_at_time || 0);
-    gross += price;
+  const names: string[] = [];
+  for (const bs of lines) {
+    gross += Number(bs.price_at_time || 0);
     const qty = Number(bs.quantity || 1);
-    const service = qty > 1 ? `${bs.service_name} x ${qty}` : bs.service_name;
-    rows.push({ date: d, client: clientName, service, amount: price, kind: "service", bookingId: bid });
+    names.push(qty > 1 ? `${bs.service_name} x ${qty}` : String(bs.service_name));
   }
-  const discount = Math.min(Number(booking.discount || 0), gross);
-  if (discount > 0) {
-    rows.push({ date: d, client: clientName, service: DISCOUNT_LABEL, amount: -discount, kind: "discount", bookingId: bid });
-  }
-  return rows;
+  gross = pyRound(gross, 2);
+  const discount = pyRound(Math.min(Math.max(Number(booking.discount || 0), 0), gross), 2);
+  const services = names.join(", ") + (booking.house_call ? " (house call)" : "");
+  return {
+    date: toDate(booking.date),
+    client: clientName,
+    services,
+    serviceCount: lines.length,
+    discount,
+    amount: pyRound(gross - discount, 2),
+    bookingId: booking.id ?? null,
+  };
 }
 
-/** Every service performed in the range, oldest first, as flat rows. */
+/** Every visit done in the range, oldest first, one row each. */
 export function payrollRows(
   bookings: BookingLike[],
   clients: ClientLike[],
@@ -175,7 +186,8 @@ export function payrollRows(
   for (const b of doneBookings(bookings, start, end, today)) {
     const name =
       b.client_id !== null && names.has(b.client_id) ? (names.get(b.client_id) as string) : "(client not on file)";
-    rows.push(...bookingRows(b, name));
+    const row = bookingRow(b, name);
+    if (row) rows.push(row);
   }
   return rows;
 }
@@ -183,48 +195,22 @@ export function payrollRows(
 export interface PayrollTotals {
   services: number;
   appointments: number;
+  discount: number;
   total: number;
 }
 
 /**
- * Headline figures: service lines, visits they came from, and what it adds up
- * to. Visits count booking ids, not client-days — a client who comes back the
- * same afternoon came twice.
+ * Headline figures: service lines, visits, discounts and what it adds up to.
+ * Visits count booking ids, not client-days — a client who comes back the same
+ * afternoon came twice.
  */
 export function totals(rows: PayrollRow[]): PayrollTotals {
   return {
-    services: rows.filter((r) => r.kind === "service").length,
+    services: pySum(rows.map((r) => r.serviceCount)),
     appointments: new Set(rows.map((r) => r.bookingId)).size,
+    discount: pyRound(pySum(rows.map((r) => r.discount)), 2),
     total: pyRound(pySum(rows.map((r) => r.amount)), 2),
   };
-}
-
-export interface SummaryLine {
-  service: string;
-  count: number;
-  total: number;
-}
-
-/**
- * Per-service totals, biggest earner first. Discounts collapse into one line,
- * kept last, so this sheet adds up to the same grand total as the detail.
- */
-export function serviceSummary(rows: PayrollRow[]): SummaryLine[] {
-  const tally = new Map<string, SummaryLine>();
-  for (const r of rows) {
-    let t = tally.get(r.service);
-    if (!t) {
-      t = { service: r.service, count: 0, total: 0 };
-      tally.set(r.service, t);
-    }
-    t.count += 1;
-    t.total = pyRound(t.total + r.amount, 2);
-  }
-  const all = [...tally.values()];
-  const lines = all
-    .filter((t) => t.service !== DISCOUNT_LABEL)
-    .sort((a, b) => cmpTuple([-a.total, a.service], [-b.total, b.service]));
-  return [...lines, ...all.filter((t) => t.service === DISCOUNT_LABEL)];
 }
 
 export type PaymentKey = "cash" | "card" | "transfer" | "voucher" | "unrecorded" | string;
@@ -285,7 +271,9 @@ export function csvSafe(value: unknown): string {
 }
 
 function cells(rows: PayrollRow[]): string[][] {
-  return rows.map((r) => [String(r.date), csvSafe(r.client), csvSafe(r.service), pyFixed(r.amount, 2)]);
+  return rows.map((r) => [
+    String(r.date), csvSafe(r.client), csvSafe(r.services), r.discount ? pyFixed(r.discount, 2) : "", pyFixed(r.amount, 2),
+  ]);
 }
 
 /** Python csv.writer defaults: QUOTE_MINIMAL, doubled quotes, CRLF line ends. */
@@ -307,7 +295,8 @@ function csvRow(fields: string[]): string {
 export function rowsToCsv(rows: PayrollRow[]): string {
   let out = csvRow([...COLUMNS]);
   for (const c of cells(rows)) out += csvRow(c);
-  out += csvRow(["", "", "TOTAL", pyFixed(totals(rows).total, 2)]);
+  const t = totals(rows);
+  out += csvRow(["", "", "TOTAL", pyFixed(t.discount, 2), pyFixed(t.total, 2)]);
   return out;
 }
 
@@ -317,9 +306,9 @@ function addr(row: number, col: number): string {
 }
 
 /**
- * Two-sheet workbook: every line on "Services", the per-service roll-up on
- * "Summary". Both totals are live SUM() formulas, so the moment she edits or
- * deletes a line, the number she is paid on follows her edit.
+ * One sheet, "Services": a row per visit. The totals are live SUM() formulas,
+ * so the moment she edits or deletes a line, the number she is paid on
+ * follows her edit.
  *
  * exceljs is loaded lazily so pages that only need the CSV/rows logic don't pay
  * for it in their bundle.
@@ -359,8 +348,7 @@ export async function rowsToXlsx(
   };
   const fTotLbl: Style = totalBase;
   const fTotNum: Style = { ...totalBase, numFmt: MONEY };
-  const fInt: Style = { numFmt: "0" };
-  const fTotInt: Style = { ...totalBase, numFmt: "0" };
+  const fWrap: Style = { alignment: { wrapText: true, vertical: "top" } };
 
   const put = (ws: import("exceljs").Worksheet, row: number, col: number, value: import("exceljs").CellValue, style?: Style) => {
     const cell = ws.getCell(addr(row, col));
@@ -373,7 +361,7 @@ export async function rowsToXlsx(
 
   // ---- Services ----
   const ws = wb.addWorksheet("Services");
-  [13, 24, 34, 14].forEach((w, i) => (ws.getColumn(i + 1).width = w));
+  [13, 22, 44, 13, 14].forEach((w, i) => (ws.getColumn(i + 1).width = w));
   put(ws, 0, 0, `${title} — services for ${label}`, fTitle);
   put(
     ws, 1, 0,
@@ -382,53 +370,27 @@ export async function rowsToXlsx(
     fSub,
   );
   const headRow = 3;
-  COLUMNS.forEach((name, col) => put(ws, headRow, col, name, col === 3 ? fHeadR : fHead));
+  COLUMNS.forEach((name, col) => put(ws, headRow, col, name, col >= 3 ? fHeadR : fHead));
   rows.forEach((r, i) => {
     const row = headRow + 1 + i;
     put(ws, row, 0, parseDate(r.date), fDate); // UTC midnight -> exact Excel date
     put(ws, row, 1, r.client);
-    put(ws, row, 2, r.service);
-    put(ws, row, 3, pyRound(r.amount, 2), fMoney);
+    put(ws, row, 2, r.services, fWrap);
+    put(ws, row, 3, r.discount ? pyRound(r.discount, 2) : null, fMoney);
+    put(ws, row, 4, pyRound(r.amount, 2), fMoney);
   });
   const totalRow = headRow + 1 + rows.length;
   for (let col = 0; col < 3; col++) put(ws, totalRow, col, null, fTotLbl);
   put(ws, totalRow, 2, "TOTAL", fTotLbl);
   if (rows.length) {
-    put(ws, totalRow, 3, { formula: `SUM(D${headRow + 2}:D${totalRow})`, result: t.total }, fTotNum);
+    put(ws, totalRow, 3, { formula: `SUM(D${headRow + 2}:D${totalRow})`, result: t.discount }, fTotNum);
+    put(ws, totalRow, 4, { formula: `SUM(E${headRow + 2}:E${totalRow})`, result: t.total }, fTotNum);
   } else {
     put(ws, totalRow, 3, 0, fTotNum);
+    put(ws, totalRow, 4, 0, fTotNum);
   }
   ws.views = [{ state: "frozen", xSplit: 0, ySplit: headRow + 1 }];
-  if (rows.length) ws.autoFilter = `${addr(headRow, 0)}:${addr(totalRow - 1, 3)}`;
-
-  // ---- Summary ----
-  const sm = wb.addWorksheet("Summary");
-  [34, 13, 14].forEach((w, i) => (sm.getColumn(i + 1).width = w));
-  put(sm, 0, 0, `Summary — ${label}`, fTitle);
-  put(sm, 1, 0, "What was done, and what each service brought in", fSub);
-  ["Service", "Times done", "Total (R)"].forEach((name, col) => put(sm, headRow, col, name, col === 0 ? fHead : fHeadR));
-  const summary = serviceSummary(rows);
-  summary.forEach((line, i) => {
-    const row = headRow + 1 + i;
-    put(sm, row, 0, line.service);
-    put(sm, row, 1, line.count, fInt);
-    put(sm, row, 2, pyRound(line.total, 2), fMoney);
-  });
-  const sTotal = headRow + 1 + summary.length;
-  put(sm, sTotal, 0, "TOTAL", fTotLbl);
-  // "Times done" totals service lines only. Discounts sit last with their own
-  // count, but adding them in would claim she performed a discount.
-  const nServices = summary.filter((x) => x.service !== DISCOUNT_LABEL).length;
-  if (nServices) {
-    put(sm, sTotal, 1, { formula: `SUM(B${headRow + 2}:B${headRow + 1 + nServices})`, result: t.services }, fTotInt);
-  } else {
-    put(sm, sTotal, 1, 0, fTotInt);
-  }
-  if (summary.length) {
-    put(sm, sTotal, 2, { formula: `SUM(C${headRow + 2}:C${sTotal})`, result: t.total }, fTotNum);
-  } else {
-    put(sm, sTotal, 2, 0, fTotNum);
-  }
+  if (rows.length) ws.autoFilter = `${addr(headRow, 0)}:${addr(totalRow - 1, 4)}`;
 
   const buf = await wb.xlsx.writeBuffer();
   return new Uint8Array(buf as ArrayBuffer);

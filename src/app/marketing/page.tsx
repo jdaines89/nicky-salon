@@ -1,6 +1,6 @@
 "use client";
 
-import { BellRing, Cake, Gift, PhoneCall, Sunrise } from "lucide-react";
+import { BellRing, Cake, Gift, MessageCircle, PhoneCall, Search, Sunrise } from "lucide-react";
 import { useState } from "react";
 import { useSalon } from "@/components/data";
 import { Seg } from "@/components/ui";
@@ -16,10 +16,11 @@ import {
  * typed. No API, no per-message cost.
  */
 
-const SECTIONS = ["Reminders", "Win-Back", "Birthdays", "Loyalty Rewards", "Fill a Quiet Slot"] as const;
+const SECTIONS = ["Pick a client", "Reminders", "Win-Back", "Birthdays", "Loyalty Rewards", "Fill a Quiet Slot"] as const;
 type Section = (typeof SECTIONS)[number];
 
 const DEFAULTS = {
+  anyone: "Hi {name}! It's Nicky from Beauty & Nails 💅 ",
   reminder: "Hi {name}! Just a friendly reminder of your appointment at Nicky's Beauty & Nails "
     + "{day} at {time} 💅 See you soon! — Nicky",
   winback: "Hi {name}! It's Nicky from Beauty & Nails 💅 It's been a little while since your last "
@@ -35,6 +36,8 @@ type TplKey = keyof typeof DEFAULTS;
 
 const hhmm = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 const plural = (n: number, word: string) => `${n} ${word}${n !== 1 ? "s" : ""}`;
+/** Enough to scroll comfortably on a phone; search finds the rest. */
+const PICK_LIMIT = 30;
 
 export default function Marketing() {
   const { clients, bookings, clientById, today } = useSalon();
@@ -43,6 +46,7 @@ export default function Marketing() {
   const [tpls, setTpls] = useState<Record<TplKey, string>>({ ...DEFAULTS });
   const [remDay, setRemDay] = useState<"Tomorrow" | "Today" | "Pick a date">("Tomorrow");
   const [remDate, setRemDate] = useState(addDays(today, 1));
+  const [search, setSearch] = useState("");
 
   const editor = (k: TplKey, placeholders: string) => (
     <MarketingTemplateEditor value={tpls[k]} placeholders={placeholders} isDefault={tpls[k] === DEFAULTS[k]}
@@ -51,7 +55,38 @@ export default function Marketing() {
 
   let body: React.ReactNode;
 
-  if (section === "Reminders") {
+  if (section === "Pick a client") {
+    const q = search.trim().toLowerCase();
+    const digits = q.replace(/\D/g, "");
+    const matches = [...clients]
+      .filter((c) => !q || c.name.toLowerCase().includes(q) || (digits.length >= 3 && (c.phone || "").replace(/\D/g, "").includes(digits)))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const shown = matches.slice(0, PICK_LIMIT);
+    body = (
+      <>
+        <h2><MessageCircle size={18} />Message a client</h2>
+        <p className="sub">Anyone you like, about anything. Find her, tap WhatsApp, and finish the message there.</p>
+        {editor("anyone", "{name}")}
+        <div className="card">
+          <div className="search" style={{ marginBottom: 10 }}>
+            <Search size={18} />
+            <input type="search" placeholder="Search by name or number" value={search}
+              onChange={(e) => setSearch(e.target.value)} aria-label="Search clients" />
+          </div>
+          {!matches.length && <p className="muted" style={{ margin: 0 }}>{clients.length ? "No one by that name." : "No clients yet."}</p>}
+          <div className="list">
+            {shown.map((c) => (
+              <MarketingRow key={c.id} client={c} context={c.phone ? c.phone : "Tap her name to add a number."}
+                message={renderTpl(tpls.anyone, { name: firstName(c.name) })} />
+            ))}
+          </div>
+          {matches.length > shown.length && (
+            <p className="small muted" style={{ marginBottom: 0 }}>{plural(matches.length - shown.length, "more client")}. Type a name to find her.</p>
+          )}
+        </div>
+      </>
+    );
+  } else if (section === "Reminders") {
     const target = remDay === "Tomorrow" ? addDays(today, 1) : remDay === "Today" ? today : (remDate || addDays(today, 1));
     const dayWord = remDay === "Tomorrow" ? "tomorrow" : remDay === "Today" ? "today" : `on ${fmtDayMonth(target)}`;
     const appts = bookings.filter((b) => b.date === target && (b.status === "confirmed" || b.status === "pending"))

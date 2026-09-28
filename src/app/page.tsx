@@ -188,7 +188,7 @@ export default function Today() {
                 <div className="tl-dot" aria-hidden />
                 <div className="grow tl-body">
                   <div className="title">{c?.name ?? "—"}</div>
-                  <div className="meta">{bookingTitle(b)} · {rand(bookingNet(b))}{paymentShort(b) ? ` · ${paymentShort(b)}` : ""}</div>
+                  <div className="meta">{b.house_call ? "House call · " : ""}{bookingTitle(b)} · {rand(bookingNet(b))}{paymentShort(b) ? ` · ${paymentShort(b)}` : ""}</div>
                   {b.notes && <div className="meta tl-note"><StickyNote size={12} />{b.notes}</div>}
                 </div>
                 {b.status !== "confirmed" && statusBadge(b.status)}

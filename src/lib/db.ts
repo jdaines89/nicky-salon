@@ -107,6 +107,7 @@ export interface BookingFields {
   late_fee?: number | null;
   late_fee_status?: LateFeeStatus | null;
   completed_at?: string | null;
+  house_call?: boolean;
   series_id?: string | null;
 }
 
@@ -127,6 +128,7 @@ export async function addBooking(f: BookingFields, services: PickedService[]): P
     notes: f.notes || null, payment_method: f.payment_method ?? null,
     voucher_code: f.voucher_code || null, voucher_value: f.voucher_value ?? null,
     late_cancel: f.late_cancel ?? false, late_fee: f.late_fee ?? null, late_fee_status: f.late_fee_status ?? null,
+    house_call: f.house_call ?? false,
   };
   const { data, error } = await supabase.from("bookings").insert(row).select("id").single();
   if (error) fail(error);
